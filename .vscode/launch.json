@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "sourceLanguages": [
+                "swift"
+            ],
+            "name": "Debug noxscli",
+            "program": "${workspaceFolder:NoXS}/.build/debug/noxscli",
+            "args": [],
+            "cwd": "${workspaceFolder:NoXS}",
+            "preLaunchTask": "swift: Build Debug noxscli"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "sourceLanguages": [
+                "swift"
+            ],
+            "name": "Release noxscli",
+            "program": "${workspaceFolder:NoXS}/.build/release/noxscli",
+            "args": [],
+            "cwd": "${workspaceFolder:NoXS}",
+            "preLaunchTask": "swift: Build Release noxscli"
+        }
+    ]
+}

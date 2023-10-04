@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "phc-winner-argon2",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/raidshift/phc-winner-argon2",
+      "state" : {
+        "revision" : "f57e61e19229e23c4445b85494dbf7c07de721cb",
+        "version" : "1.0.0"
+      }
+    }
+  ],
+  "version" : 2
+}
