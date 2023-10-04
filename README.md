@@ -11,7 +11,7 @@
 ## Authenticated encryption: ChaCha20-Poly1305
   * Input: key (32 bytes), nonce (last 12 bytes from salt), plaintext
   * Output: version 0x01 (1 byte) || salt (16 bytes) || ciphertext || authentication tag (16 bytes)
-    ![image](https://github.com/raidshift/NoXS/assets/51262620/9d695f61-d24a-48b3-8e3a-55e8baea0ee9)
+    ![image](https://github.com/raidshift/NoXS/assets/51262620/4e364805-0950-4c28-be78-daacc41b88e8)
 
 ## Usage
  
