@@ -16,7 +16,7 @@ let ARGON2ID_SALT_LEN = 16
 let CHACHAPOLY_NONCE_LEN = 12
 let CHACHAPOLY_TAG_LEN = 16
 
-enum ENCRYPT_ERR: Error {
+public enum NOXS_ERR: Error {
     case FORMAT
     case AUTHENTICATION
     case CORE_RND
@@ -30,7 +30,7 @@ let ENCRYPT_ERR_CORE_RND = "Invoking secure random number generator failed"
 let ENCRYPT_ERR_CORE_KDF = "Invoking key derivation function failed"
 let ENCRYPT_ERR_CORE_CIPHER = "Invoking cipher function failed"
 
-extension ENCRYPT_ERR: LocalizedError {
+extension NOXS_ERR: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .FORMAT:
@@ -47,8 +47,8 @@ extension ENCRYPT_ERR: LocalizedError {
     }
 }
 
-func deriveKey(password: inout Data, salt: inout Data) throws -> Data {
-    if salt.count != ARGON2ID_SALT_LEN { throw ENCRYPT_ERR.FORMAT }
+public func deriveKey(password: inout Data, salt: inout Data) throws -> Data {
+    if salt.count != ARGON2ID_SALT_LEN { throw NOXS_ERR.FORMAT }
 
     var key = Data(repeating: 0, count: ARGON2ID_KEY_LEN)
 
@@ -67,7 +67,7 @@ func deriveKey(password: inout Data, salt: inout Data) throws -> Data {
                     0,
                     Argon2_id,
                     UInt32(ARGON2ID_VERSION)
-                ) != 0 { throw ENCRYPT_ERR.CORE_KDF }
+                ) != 0 { throw NOXS_ERR.CORE_KDF }
             }
         }
     }
@@ -75,18 +75,18 @@ func deriveKey(password: inout Data, salt: inout Data) throws -> Data {
     return key
 }
 
-func deriveKey(password: inout Data) throws -> (key: Data, salt: Data) {
+public func deriveKey(password: inout Data) throws -> (key: Data, salt: Data) {
     var salt = Data(repeating: 0, count: ARGON2ID_SALT_LEN)
 
     try salt.withUnsafeMutableBytes { saltBytes in
-        if SecRandomCopyBytes(kSecRandomDefault, ARGON2ID_SALT_LEN, saltBytes.baseAddress!) != 0 { throw ENCRYPT_ERR.CORE_RND }
+        if SecRandomCopyBytes(kSecRandomDefault, ARGON2ID_SALT_LEN, saltBytes.baseAddress!) != 0 { throw NOXS_ERR.CORE_RND }
     }
 
     return try (key: deriveKey(password: &password, salt: &salt), salt: salt)
 }
 
-func encrypt(key: inout Data, salt: inout Data, plaintext: inout Data) throws -> Data {
-    if key.count != ARGON2ID_KEY_LEN || salt.count != ARGON2ID_SALT_LEN { throw ENCRYPT_ERR.FORMAT }
+public func encrypt(key: inout Data, salt: inout Data, plaintext: inout Data) throws -> Data {
+    if key.count != ARGON2ID_KEY_LEN || salt.count != ARGON2ID_SALT_LEN { throw NOXS_ERR.FORMAT }
 
     do {
         return try
@@ -98,7 +98,7 @@ func encrypt(key: inout Data, salt: inout Data, plaintext: inout Data) throws ->
                 nonce: ChaChaPoly.Nonce(data: salt.subdata(in: ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN ..< ARGON2ID_SALT_LEN))
             ).combined
     } catch {
-        throw ENCRYPT_ERR.CORE_CIPHER
+        throw NOXS_ERR.CORE_CIPHER
     }
 }
 
@@ -108,8 +108,8 @@ public func encrypt(password: inout Data, plaintext: inout Data) throws -> Data 
     return try encrypt(key: &key.key, salt: &key.salt, plaintext: &plaintext)
 }
 
-func decrypt(key: inout Data, ciphertext: inout Data) throws -> Data {
-    if key.count != ARGON2ID_KEY_LEN { throw ENCRYPT_ERR.FORMAT }
+public func decrypt(key: inout Data, ciphertext: inout Data) throws -> Data {
+    if key.count != ARGON2ID_KEY_LEN { throw NOXS_ERR.FORMAT }
 
     do {
         return try ciphertext.withUnsafeMutableBytes { cipherBytes in
@@ -124,14 +124,14 @@ func decrypt(key: inout Data, ciphertext: inout Data) throws -> Data {
             )
         }
     } catch CryptoKitError.authenticationFailure {
-        throw ENCRYPT_ERR.AUTHENTICATION
+        throw NOXS_ERR.AUTHENTICATION
     } catch {
-        throw ENCRYPT_ERR.CORE_CIPHER
+        throw NOXS_ERR.CORE_CIPHER
     }
 }
 
 public func decrypt(password: inout Data, ciphertext: inout Data) throws -> Data {
-    if ciphertext.count < VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN || ciphertext[0] != VERSION { throw ENCRYPT_ERR.FORMAT }
+    if ciphertext.count < VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN || ciphertext[0] != VERSION { throw NOXS_ERR.FORMAT }
 
     var salt = ciphertext.withUnsafeMutableBytes { cipherBytes in
         Data(bytesNoCopy: cipherBytes.baseAddress! + VERSION_PREFIX_LEN, count: ARGON2ID_SALT_LEN, deallocator: .none)

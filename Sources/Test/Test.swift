@@ -93,19 +93,19 @@ class XTests: XCTestCase {
         do {
             var ciphertext = Data(hex: versionHex + saltHex + tagHex)!
             _ = try decrypt(password: &password, ciphertext: &ciphertext)
-        } catch ENCRYPT_ERR.AUTHENTICATION {}
+        } catch NOXS_ERR.AUTHENTICATION {}
         catch { XCTFail(error.localizedDescription) }
 
         do {
             var ciphertext = Data(hex: "ab" + saltHex + tagHex)!
             _ = try decrypt(password: &password, ciphertext: &ciphertext)
-        } catch ENCRYPT_ERR.FORMAT {}
+        } catch NOXS_ERR.FORMAT {}
         catch { XCTFail(error.localizedDescription) }
 
         do {
             var ciphertext = Data(hex: versionHex + nonceHex + tagHex)!
             _ = try decrypt(password: &password, ciphertext: &ciphertext)
-        } catch ENCRYPT_ERR.FORMAT {}
+        } catch NOXS_ERR.FORMAT {}
         catch { XCTFail(error.localizedDescription) }
     }
 }
