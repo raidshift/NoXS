@@ -76,10 +76,16 @@ public func deriveKey(password: inout Data, salt: inout Data) throws -> Data {
 }
 
 public func deriveKey(password: inout Data) throws -> (key: Data, salt: Data) {
-    var salt = Data(repeating: 0, count: ARGON2ID_SALT_LEN)
+    var rndGen = SystemRandomNumberGenerator()
+    var rndData = Data()
 
-    try salt.withUnsafeMutableBytes { saltBytes in
-        if SecRandomCopyBytes(kSecRandomDefault, ARGON2ID_SALT_LEN, saltBytes.baseAddress!) != 0 { throw NOXS_ERR.CORE_RND }
+    for _ in 1 ... ARGON2ID_SALT_LEN / MemoryLayout<UInt64>.size {
+        var rnd = rndGen.next()
+        rndData += Data(bytes: &rnd, count: MemoryLayout<UInt64>.size)
+    }
+
+    var salt = rndData.withUnsafeMutableBytes { rndBytes in
+        Data(bytesNoCopy: rndBytes.baseAddress!, count: ARGON2ID_SALT_LEN, deallocator: .none)
     }
 
     return try (key: deriveKey(password: &password, salt: &salt), salt: salt)
