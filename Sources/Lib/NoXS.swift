@@ -1,5 +1,5 @@
 import argon2
-import CryptoKit
+import Crypto
 import Foundation
 
 let VERSION = UInt8(1)
