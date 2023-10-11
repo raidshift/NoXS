@@ -91,7 +91,7 @@ class XTests: XCTestCase {
         }
 
         do {
-            var ciphertext = Data(hex: versionHex + saltHex + tagHex)!
+            var ciphertext = Data(hex: versionHex + saltHex + tagHex + tagHex)!
             _ = try decrypt(password: &password, ciphertext: &ciphertext)
         } catch NOXS_ERR.AUTHENTICATION {}
         catch { XCTFail(error.localizedDescription) }

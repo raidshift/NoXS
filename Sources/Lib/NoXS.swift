@@ -79,14 +79,12 @@ public func deriveKey(password: inout Data) throws -> (key: Data, salt: Data) {
     var rndGen = SystemRandomNumberGenerator()
     var rndData = Data()
 
-    for _ in 1 ... ARGON2ID_SALT_LEN / MemoryLayout<UInt64>.size {
+    for _ in 1 ... 1 + ARGON2ID_SALT_LEN / MemoryLayout<UInt64>.size {
         var rnd = rndGen.next()
         rndData += Data(bytes: &rnd, count: MemoryLayout<UInt64>.size)
     }
 
-    var salt = rndData.withUnsafeMutableBytes { rndBytes in
-        Data(bytesNoCopy: rndBytes.baseAddress!, count: ARGON2ID_SALT_LEN, deallocator: .none)
-    }
+    var salt = rndData.subdata(in: 0 ..< ARGON2ID_SALT_LEN)
 
     return try (key: deriveKey(password: &password, salt: &salt), salt: salt)
 }
@@ -139,12 +137,11 @@ public func decrypt(key: inout Data, ciphertext: inout Data) throws -> Data {
             )
         }
     } catch CryptoKitError.authenticationFailure {
-        print("authentication")
         throw NOXS_ERR.AUTHENTICATION
     } catch {
+        print(error)
         throw NOXS_ERR.CORE_CIPHER
     }
-    print("ok")
 }
 
 public func decrypt(password: inout Data, ciphertext: inout Data) throws -> Data {
