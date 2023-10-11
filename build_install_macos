@@ -5,6 +5,7 @@
 # echo "Building version "$ver
 # echo "let VERSION = "$ver > ./Sources/Version.swift
 
+rm -rf .build
 swift build -c release --arch arm64 --arch x86_64
 sudo cp .build/apple/Products/Release/noxscli /usr/local/bin/noxs
 

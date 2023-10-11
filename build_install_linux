@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# ver=$(grep -E 'let[ \t]+VERSION[ \t]+=[ \t]+[0-9]+' ./Sources/Version.swift | sed -E 's/let[ \t]+VERSION[ \t]+=[ \t]+([0-9]+)/\1/')
+# ver=`expr $ver + 1`
+# echo "Building version "$ver
+# echo "let VERSION = "$ver > ./Sources/Version.swift
+
+rm -rf .build
+swift build -c release
+sudo cp .build/release/noxscli /usr/local/bin/noxs
+
