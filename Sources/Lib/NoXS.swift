@@ -139,10 +139,12 @@ public func decrypt(key: inout Data, ciphertext: inout Data) throws -> Data {
             )
         }
     } catch CryptoKitError.authenticationFailure {
+        print("authentication")
         throw NOXS_ERR.AUTHENTICATION
     } catch {
         throw NOXS_ERR.CORE_CIPHER
     }
+    print("ok")
 }
 
 public func decrypt(password: inout Data, ciphertext: inout Data) throws -> Data {
