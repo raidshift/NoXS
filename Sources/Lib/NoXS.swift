@@ -114,8 +114,17 @@ public func encrypt(password: inout Data, plaintext: inout Data) throws -> Data 
     return try encrypt(key: &key.key, salt: &key.salt, plaintext: &plaintext)
 }
 
+extension Data {
+    var hexString: String {
+        return map { byte in String(format: "%02x", byte) }.joined()
+    }
+}
+
 public func decrypt(key: inout Data, ciphertext: inout Data) throws -> Data {
     if key.count != ARGON2ID_KEY_LEN { throw NOXS_ERR.FORMAT }
+
+    print("key        = \(key.hexString)")
+    print("ciphertext = \(ciphertext.hexString)")
 
     do {
         return try ciphertext.withUnsafeMutableBytes { cipherBytes in
