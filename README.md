@@ -1,7 +1,7 @@
 # NoXS
  
 * Command Line Tool & Library for authenticated encryption with password-based key derivation
-* Written in Swift (MacOS)
+* Written in Swift (MacOS & Linux)
   
 ## Key derivation: Argon2id 
   * Parameters: iterations = 2, memory = 1024*256, parallelism = 2
@@ -28,4 +28,5 @@
 * da = base64-decode & decrypt
  
 ## Build with [SwiftPM](https://www.swift.org/install/) & install to /usr/local/bin
-* build_install
+* build_install_macos
+* build_install_linux
