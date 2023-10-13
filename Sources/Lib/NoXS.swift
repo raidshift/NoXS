@@ -127,12 +127,9 @@ public func decrypt(key: inout Data, ciphertext: inout Data) throws -> Data {
                 using: SymmetricKey(data: key)
             )
         }
-    } catch CryptoKitError.authenticationFailure {
+    } catch CryptoKitError.authenticationFailure, CryptoKitError.underlyingCoreCryptoError(0x1e000065) {
         throw NOXS_ERR.AUTHENTICATION
     } catch {
-        if "\(error)" == "underlyingCoreCryptoError(error: 503316581)" {
-            throw NOXS_ERR.AUTHENTICATION
-        }
         throw NOXS_ERR.CORE_CIPHER
     }
 }
