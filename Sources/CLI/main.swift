@@ -3,8 +3,8 @@ import NoXS
 
 let COMMANDS = ["ea", "e", "da", "d"]
 
-let BUILD = "1"
-let VER = "V1.\("BUILD")\(String(repeating: " ", count: 3 - "\(BUILD)".count))"
+let BUILD = "2"
+let VER = "V1.\(BUILD)\(String(repeating: " ", count: 3 - "\(BUILD)".count))"
 
 let STD_ERR_INFO = """
 

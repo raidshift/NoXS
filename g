@@ -1,5 +1,5 @@
 #!/bin/sh
 
-build=1
+build=2
 
 git add . && git commit -m "build_$build" && git push
