@@ -77,10 +77,10 @@ do {
         fallthrough
 
     case COMMANDS[3]:
-        if isBase64data { try data = data.filterBase64 }
         if !passwordFromFile {
             password = (String(validatingUTF8: UnsafePointer<CChar>(getpass(STD_OUT_ENTER_PASSWORD))) ?? "").data(using: .utf8)!
         }
+        if isBase64data { try data = data.filterBase64 }
         try decrypt(password: &password, ciphertext: &data).write(to: outURL)
 
     default:
