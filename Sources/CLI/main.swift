@@ -3,7 +3,8 @@ import NoXS
 
 let COMMANDS = ["ea", "e", "da", "d"]
 
-let VER = "V1.\(BUILD)\(String(repeating: " ", count: 3 - "\(BUILD)".count))"
+let BUILD = "1"
+let VER = "V1.\("BUILD")\(String(repeating: " ", count: 3 - "\(BUILD)".count))"
 
 let STD_ERR_INFO = """
 
@@ -25,6 +26,21 @@ let STD_ERR_EQUAL_PASSWD_OUT = "<passwd_file> must not be <out_file>"
 
 let STD_OUT_ENTER_PASSWORD = "Enter password:"
 let STD_OUT_CONFIRM_PASSWORD = "Confirm password:"
+
+enum DATA_ERR: Error {
+    case FORMAT_BASE64
+}
+
+let DATA_ERR_TEXT_FORMAT_BASE64 = "Input data is not base64 encoded"
+
+extension DATA_ERR: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .FORMAT_BASE64:
+            return NSLocalizedString(DATA_ERR_TEXT_FORMAT_BASE64, comment: DATA_ERR_TEXT_FORMAT_BASE64)
+        }
+    }
+}
 
 func exitWithError(_ out: String) {
     (out + "\n").data(using: .utf8).map(FileHandle.standardError.write); exit(1)
@@ -80,7 +96,7 @@ do {
         if !passwordFromFile {
             password = (String(validatingUTF8: UnsafePointer<CChar>(getpass(STD_OUT_ENTER_PASSWORD))) ?? "").data(using: .utf8)!
         }
-        if isBase64data { try data = data.filterBase64 }
+        if isBase64data { data = try Data(base64Encoded: data) ?? { throw DATA_ERR.FORMAT_BASE64 }() }
         try decrypt(password: &password, ciphertext: &data).write(to: outURL)
 
     default:
