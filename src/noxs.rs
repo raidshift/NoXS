@@ -33,6 +33,7 @@ const ARGON2ID_SALT_LEN: usize = 16;
 //     }
 // }
 
+
 pub fn derive_key(password: &str, salt: &[u8; ARGON2ID_SALT_LEN]) -> [u8; ARGON2ID_KEY_LEN] {
     let hash = Hasher::new()
         .algorithm(Algorithm::Argon2id)
