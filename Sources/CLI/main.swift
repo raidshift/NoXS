@@ -51,7 +51,7 @@ if CommandLine.arguments.count < 4
     || !COMMANDS.contains(CommandLine.arguments[1])
 { exitWithError(STD_ERR_INFO) }
 
-let inURL = URL(fileURLWithPath: CommandLine.arguments[2])
+let inURL: URL = URL(fileURLWithPath: CommandLine.arguments[2])
 let outURL = URL(fileURLWithPath: CommandLine.arguments[3])
 
 if outURL.absoluteString == inURL.absoluteString { exitWithError(STD_ERR_EQUAL_OUT_IN) }
