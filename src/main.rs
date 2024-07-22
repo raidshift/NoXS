@@ -6,7 +6,6 @@ fn print_hex(bytes: &[u8]) {
     }
 }
 
-
 fn main() {
     let (key, salt) = noxs::derive_key_with_salt("Hello");
     print_hex(&key);
