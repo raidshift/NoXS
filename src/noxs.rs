@@ -15,32 +15,27 @@ pub fn print_hex(bytes: &[u8]) {
 }
 
 const VERSION: u8 = 1;
-// const VERSION_PREFIX_LEN: usize = 1;
+const VERSION_PREFIX_LEN: usize = 1;
 const ARGON2ID_ITERATIONS: u32 = 2;
 const ARGON2ID_MEMORY_MB: u32 = 256;
 const ARGON2ID_PARALLELISM: u32 = 2;
 const ARGON2ID_KEY_LEN: usize = 32;
 const ARGON2ID_SALT_LEN: usize = 16;
 const CHACHAPOLY_NONCE_LEN: usize = 12;
-
-// const CHACHAPOLY_TAG_LEN: usize = 16;
+const CHACHAPOLY_TAG_LEN: usize = 16;
 
 #[derive(Debug)]
 pub enum NoXSErr {
     Format,
     Authentication,
-    CoreRnd,
-    CoreKdf,
     CoreCipher,
 }
 
 impl NoXSErr {
-    fn description(&self) -> &str {
+    pub fn description(&self) -> &str {
         match self {
             NoXSErr::Format => "Invalid input data",
             NoXSErr::Authentication => "Authentication failed",
-            NoXSErr::CoreRnd => "Invoking secure random number generator failed",
-            NoXSErr::CoreKdf => "Invoking key derivation function failed",
             NoXSErr::CoreCipher => "Invoking cipher function failed",
         }
     }
@@ -88,13 +83,37 @@ pub fn encrypt(
             ciphertext.extend_from_slice(&cipher);
             ciphertext
         }
-        Err(e) => {
-            panic!("{}", e);
-        }
+        Err(_) => panic!("{}", NoXSErr::CoreCipher.description()),
     }
 }
 
 pub fn encrypt_with_password(password: &str, plaintext: &[u8]) -> Vec<u8> {
     let (key, salt) = derive_key_with_salt(password);
     encrypt(&key, &salt, plaintext)
+}
+
+pub fn decrypt(key: &[u8; ARGON2ID_KEY_LEN], ciphertext: &[u8]) -> Result<Vec<u8>, NoXSErr> {
+    let nonce_start = VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN;
+    let nonce = &ciphertext[nonce_start..nonce_start + CHACHAPOLY_NONCE_LEN];
+    let cipher = ChaCha20Poly1305::new(Key::from_slice(key));
+
+    cipher
+        .decrypt(
+            Nonce::from_slice(nonce),
+            &ciphertext[nonce_start + CHACHAPOLY_NONCE_LEN..],
+        )
+        .map_err(|_| NoXSErr::Authentication)
+}
+
+pub fn decrypt_with_password(password: &str, ciphertext: &[u8]) -> Result<Vec<u8>, NoXSErr> {
+    if ciphertext.len() < VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN
+        || ciphertext[0] != VERSION
+    {
+        return Err(NoXSErr::Format);
+    }
+
+    let salt = &ciphertext[VERSION_PREFIX_LEN..VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN];
+
+    let key = derive_key(password, salt.try_into().unwrap());
+    decrypt(&key, ciphertext)
 }

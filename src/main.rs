@@ -1,4 +1,4 @@
-use noxs::encrypt_with_password;
+use noxs::{decrypt_with_password, encrypt_with_password};
 
 mod noxs;
 
@@ -10,7 +10,15 @@ fn main() {
     println!();
     noxs::print_hex(&salt);
     println!();
-    let e = encrypt_with_password(&password, plaintext.as_bytes());
-    noxs::print_hex(&e);
+    let ciphertext = encrypt_with_password(&password, plaintext.as_bytes());
+    noxs::print_hex(&ciphertext);
     println!();
+
+    let result = decrypt_with_password(&password, &ciphertext.to_vec());
+    match result {
+        Ok(plaintext) => {
+            println!("{}",String::from_utf8_lossy(&plaintext))
+        }
+        Err(e) => panic!("{}", e.description()),
+    }
 }
