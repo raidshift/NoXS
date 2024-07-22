@@ -93,7 +93,7 @@ pub fn decrypt_with_password(password: &str, ciphertext: &[u8]) -> Result<Vec<u8
     }
 
     let salt = &ciphertext[VERSION_PREFIX_LEN..VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN];
-
     let key = derive_key(password, salt.try_into().unwrap());
+    
     decrypt(&key, ciphertext)
 }
