@@ -1,6 +1,14 @@
 use argon2_kdf::{Algorithm, Hasher};
+use chacha20poly1305::{aead::{Aead, KeyInit},XChaCha20Poly1305, Nonce,Key};
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+
+
+pub fn print_hex(bytes: &[u8]) {
+    for byte in bytes {
+        print!("{:02x}", byte);
+    }
+}
 
 // const VERSION: u8 = 1;
 // const VERSION_PREFIX_LEN: usize = 1;
@@ -9,7 +17,7 @@ const ARGON2ID_MEMORY_MB: u32 = 256;
 const ARGON2ID_PARALLELISM: u32 = 2;
 const ARGON2ID_KEY_LEN: usize = 32;
 const ARGON2ID_SALT_LEN: usize = 16;
-// const CHACHAPOLY_NONCE_LEN: usize = 12;
+const CHACHAPOLY_NONCE_LEN: usize = 12;
 // const CHACHAPOLY_TAG_LEN: usize = 16;
 
 // #[derive(Debug)]
@@ -33,7 +41,6 @@ const ARGON2ID_SALT_LEN: usize = 16;
 //     }
 // }
 
-
 pub fn derive_key(password: &str, salt: &[u8; ARGON2ID_SALT_LEN]) -> [u8; ARGON2ID_KEY_LEN] {
     let hash = Hasher::new()
         .algorithm(Algorithm::Argon2id)
@@ -54,5 +61,29 @@ pub fn derive_key_with_salt(password: &str) -> ([u8; ARGON2ID_KEY_LEN], [u8; ARG
 
     rng.fill_bytes(&mut salt);
     let key = derive_key(password, &salt);
+
+    encrypt(&key,&salt,&salt);
+
     (key, salt)
 }
+
+pub fn encrypt(key: &[u8; ARGON2ID_KEY_LEN],salt: &[u8; ARGON2ID_SALT_LEN],plaintext: &[u8],) {
+    let nonce = &salt[(ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN)..];
+    let cipher = XChaCha20Poly1305::new(Key::from_slice(key));
+    let n = Nonce::from_slice(&salt[ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN..]);
+    // let ciphertext = cipher.encrypt(n, plaintext);
+
+    // let mut result = vec![VERSION];
+    // result.extend_from_slice(&salt[0..ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN]);
+    // result.extend_from_slice(&ciphertext);
+
+    // Ok(result)
+
+    print_hex(nonce);
+    println!();
+}
+
+// pub fn encrypt_with_password(password: &str, plaintext: &[u8]) -> Vec<u8> {
+//     let (key, salt) = derive_key_with_salt(password);
+//     encrypt(&key, &salt, plaintext)
+// }
