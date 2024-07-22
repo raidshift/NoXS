@@ -6,13 +6,11 @@ fn main() {
     let password = "Hello";
     let plaintext = "top secret";
     let (key, salt) = noxs::derive_key_with_salt(&password);
-    noxs::print_hex(&key);
-    println!();
-    noxs::print_hex(&salt);
-    println!();
+    println!("key : {}",hex::encode(&key));
+    println!("salt: {}",hex::encode(&salt));
+
     let ciphertext = encrypt_with_password(&password, plaintext.as_bytes());
-    noxs::print_hex(&ciphertext);
-    println!();
+    println!("ciph: {}",hex::encode(&ciphertext));
 
     let result = decrypt_with_password(&password, &ciphertext.to_vec());
     match result {

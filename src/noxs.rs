@@ -8,12 +8,6 @@ use chacha20poly1305::{
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
-pub fn print_hex(bytes: &[u8]) {
-    for byte in bytes {
-        print!("{:02x}", byte);
-    }
-}
-
 const VERSION: u8 = 1;
 const VERSION_PREFIX_LEN: usize = 1;
 const ARGON2ID_ITERATIONS: u32 = 2;
@@ -65,16 +59,9 @@ pub fn derive_key_with_salt(password: &str) -> ([u8; ARGON2ID_KEY_LEN], [u8; ARG
     (key, salt)
 }
 
-pub fn encrypt(
-    key: &[u8; ARGON2ID_KEY_LEN],
-    salt: &[u8; ARGON2ID_SALT_LEN],
-    plaintext: &[u8],
-) -> Vec<u8> {
-    let cipher = ChaCha20Poly1305::new(Key::from_slice(key));
-    let result = cipher.encrypt(
-        Nonce::from_slice(&salt[ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN..]),
-        plaintext,
-    );
+pub fn encrypt(key: &[u8; ARGON2ID_KEY_LEN], salt: &[u8; ARGON2ID_SALT_LEN], plaintext: &[u8]) -> Vec<u8> {
+    let chacha = ChaCha20Poly1305::new(Key::from_slice(key));
+    let result = chacha.encrypt(Nonce::from_slice(&salt[ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN..]), plaintext);
 
     match result {
         Ok(cipher) => {
@@ -95,20 +82,13 @@ pub fn encrypt_with_password(password: &str, plaintext: &[u8]) -> Vec<u8> {
 pub fn decrypt(key: &[u8; ARGON2ID_KEY_LEN], ciphertext: &[u8]) -> Result<Vec<u8>, NoXSErr> {
     let nonce_start = VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN;
     let nonce = &ciphertext[nonce_start..nonce_start + CHACHAPOLY_NONCE_LEN];
-    let cipher = ChaCha20Poly1305::new(Key::from_slice(key));
+    let chacha = ChaCha20Poly1305::new(Key::from_slice(key));
 
-    cipher
-        .decrypt(
-            Nonce::from_slice(nonce),
-            &ciphertext[nonce_start + CHACHAPOLY_NONCE_LEN..],
-        )
-        .map_err(|_| NoXSErr::Authentication)
+    chacha.decrypt(Nonce::from_slice(nonce), &ciphertext[nonce_start + CHACHAPOLY_NONCE_LEN..]).map_err(|_| NoXSErr::Authentication)
 }
 
 pub fn decrypt_with_password(password: &str, ciphertext: &[u8]) -> Result<Vec<u8>, NoXSErr> {
-    if ciphertext.len() < VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN
-        || ciphertext[0] != VERSION
-    {
+    if ciphertext.len() < VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN || ciphertext[0] != VERSION {
         return Err(NoXSErr::Format);
     }
 
