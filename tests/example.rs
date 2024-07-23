@@ -19,8 +19,6 @@ fn test_key_derivation() {
 
     let key = derive_key(&password, &salt.try_into().unwrap());
 
-    println!("{}",hex::encode(key));
-
-    assert_eq!(hex::encode(key),SALT_HEX);
+    assert_eq!(hex::encode(key),KEY_HEX);
 
 }
