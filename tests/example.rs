@@ -1,6 +1,4 @@
 use noxs::*;
-use std::str;
-
 
 const PASSWORD_HEX: &str = "b102a3049c060f";
 const KEY_HEX: &str = "ba49c1d86ab3b281e3cafe626e84274d6600504ec8bb072149b356ce1faea48b";
