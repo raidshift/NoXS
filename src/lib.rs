@@ -34,7 +34,7 @@ impl NoXSErr {
     }
 }
 
-pub fn derive_key(password: &str, salt: &[u8; ARGON2ID_SALT_LEN]) -> [u8; ARGON2ID_KEY_LEN] {
+pub fn derive_key(password: &[u8], salt: &[u8; ARGON2ID_SALT_LEN]) -> [u8; ARGON2ID_KEY_LEN] {
     let hash = Hasher::new()
         .algorithm(Algorithm::Argon2id)
         .custom_salt(salt)
@@ -42,13 +42,13 @@ pub fn derive_key(password: &str, salt: &[u8; ARGON2ID_SALT_LEN]) -> [u8; ARGON2
         .iterations(ARGON2ID_ITERATIONS)
         .memory_cost_kib(ARGON2ID_MEMORY_MB * 1024)
         .threads(ARGON2ID_PARALLELISM)
-        .hash(password.as_bytes())
+        .hash(password)
         .unwrap();
 
     hash.as_bytes().try_into().unwrap()
 }
 
-pub fn derive_key_with_salt(password: &str) -> ([u8; ARGON2ID_KEY_LEN], [u8; ARGON2ID_SALT_LEN]) {
+pub fn derive_key_with_salt(password: &[u8]) -> ([u8; ARGON2ID_KEY_LEN], [u8; ARGON2ID_SALT_LEN]) {
     let mut rng = ChaCha20Rng::from_entropy();
     let mut salt = [0u8; ARGON2ID_SALT_LEN];
 
@@ -73,7 +73,7 @@ pub fn encrypt(key: &[u8; ARGON2ID_KEY_LEN], salt: &[u8; ARGON2ID_SALT_LEN], pla
     }
 }
 
-pub fn encrypt_with_password(password: &str, plaintext: &[u8]) -> Vec<u8> {
+pub fn encrypt_with_password(password: &[u8], plaintext: &[u8]) -> Vec<u8> {
     let (key, salt) = derive_key_with_salt(password);
     encrypt(&key, &salt, plaintext)
 }
@@ -86,7 +86,7 @@ pub fn decrypt(key: &[u8; ARGON2ID_KEY_LEN], ciphertext: &[u8]) -> Result<Vec<u8
     chacha.decrypt(Nonce::from_slice(nonce), &ciphertext[nonce_start + CHACHAPOLY_NONCE_LEN..]).map_err(|_| NoXSErr::Authentication)
 }
 
-pub fn decrypt_with_password(password: &str, ciphertext: &[u8]) -> Result<Vec<u8>, NoXSErr> {
+pub fn decrypt_with_password(password: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>, NoXSErr> {
     println!("{} {}",ciphertext.len(),VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN);
     if ciphertext.len() < VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN || ciphertext[0] != VERSION {
         return Err(NoXSErr::Format);

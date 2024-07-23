@@ -1,4 +1,6 @@
-// use noxs::*;
+use noxs::*;
+use std::str;
+
 
 const PASSWORD_HEX: &str = "b102a3049c060f";
 const KEY_HEX: &str = "ba49c1d86ab3b281e3cafe626e84274d6600504ec8bb072149b356ce1faea48b";
@@ -12,15 +14,13 @@ const CIPHERTEXT_HEX: &str = "0101020304a71ea4bf40414e434bc5464991352cd42cf49693
 
 #[test]
 fn test_key_derivation() {
-    println!("Password Hex: {}", PASSWORD_HEX);
-    println!("Key Hex: {}", KEY_HEX);
-    println!("Plaintext Hex: {}", PLAINTEXT_HEX);
-    println!("Nonce Hex: {}", NONCE_HEX);
-    println!("Version Hex: {}", VERSION_HEX);
-    println!("Salt Hex: {}", SALT_HEX);
-    println!("Encrypted Hex: {}", ENCRYPTED_HEX);
-    println!("Tag Hex: {}", TAG_HEX);
-    println!("Ciphertext Hex: {}", CIPHERTEXT_HEX);
+    let password = hex::decode(PASSWORD_HEX).unwrap();
+    let salt = hex::decode(SALT_HEX).unwrap();
 
-    println!("{:?}", hex::decode(PASSWORD_HEX));
+    let key = derive_key(&password, &salt.try_into().unwrap());
+
+    println!("{}",hex::encode(key));
+
+    assert_eq!(hex::encode(key),SALT_HEX);
+
 }
