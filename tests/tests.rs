@@ -26,7 +26,7 @@ fn test_encrypt1() {
     let salt = hex::decode(SALT_HEX).unwrap();
     let plaintext = hex::decode(PLAINTEXT_HEX).unwrap();
 
-    let ciphertext = encrypt(&key.try_into().unwrap(), &salt.try_into().unwrap(), &plaintext);
+    let ciphertext = encrypt(&key.try_into().unwrap(), &salt.try_into().unwrap(), &plaintext).unwrap();
     assert_eq!(hex::encode(ciphertext), CIPHERTEXT_HEX);
 }
 
@@ -35,6 +35,6 @@ fn test_encrypt2() {
     let password = hex::decode(PASSWORD_HEX).unwrap();
     let plaintext = hex::decode(PLAINTEXT_HEX).unwrap();
 
-    let ciphertext = encrypt_with_password(&password, &plaintext);
+    let ciphertext = encrypt_with_password(&password, &plaintext).unwrap();
     assert_eq!(ciphertext.len(), VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + plaintext.len() + CHACHAPOLY_TAG_LEN);
 }
