@@ -7,15 +7,15 @@ use chacha20poly1305::{
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
-const VERSION: u8 = 1;
-const VERSION_PREFIX_LEN: usize = 1;
-const ARGON2ID_ITERATIONS: u32 = 2;
-const ARGON2ID_MEMORY_MB: u32 = 256;
-const ARGON2ID_PARALLELISM: u32 = 2;
-const ARGON2ID_KEY_LEN: usize = 32;
-const ARGON2ID_SALT_LEN: usize = 16;
-const CHACHAPOLY_NONCE_LEN: usize = 12;
-const CHACHAPOLY_TAG_LEN: usize = 16;
+pub const VERSION: u8 = 1;
+pub const VERSION_PREFIX_LEN: usize = 1;
+pub const ARGON2ID_ITERATIONS: u32 = 2;
+pub const ARGON2ID_MEMORY_MB: u32 = 256;
+pub const ARGON2ID_PARALLELISM: u32 = 2;
+pub const ARGON2ID_KEY_LEN: usize = 32;
+pub const ARGON2ID_SALT_LEN: usize = 16;
+pub const CHACHAPOLY_NONCE_LEN: usize = 12;
+pub const CHACHAPOLY_TAG_LEN: usize = 16;
 
 #[derive(Debug)]
 pub enum NoXSErr {
@@ -65,7 +65,7 @@ pub fn encrypt(key: &[u8; ARGON2ID_KEY_LEN], salt: &[u8; ARGON2ID_SALT_LEN], pla
     match result {
         Ok(cipher) => {
             let mut ciphertext = vec![VERSION];
-            ciphertext.extend_from_slice(&salt[..ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN]);
+            ciphertext.extend_from_slice(salt);
             ciphertext.extend_from_slice(&cipher);
             ciphertext
         }

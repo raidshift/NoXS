@@ -10,7 +10,6 @@ const ENCRYPTED_HEX: &str = "91352cd42cf496937b700a902c01d9d4";
 const TAG_HEX: &str = "adcacd100c31dc5b2fa4c1f4575e684f";
 const CIPHERTEXT_HEX: &str = "0101020304a71ea4bf40414e434bc5464991352cd42cf496937b700a902c01d9d4adcacd100c31dc5b2fa4c1f4575e684f";
 
-
 #[test]
 fn test_key_derivation() {
     let password = hex::decode(PASSWORD_HEX).unwrap();
@@ -18,18 +17,24 @@ fn test_key_derivation() {
 
     let key = derive_key(&password, &salt.try_into().unwrap());
 
-    assert_eq!(hex::encode(key),KEY_HEX);
+    assert_eq!(hex::encode(key), KEY_HEX);
 }
 
 #[test]
-fn test_encrypt() {
-    let password = hex::decode(PASSWORD_HEX).unwrap();
+fn test_encrypt1() {
     let key = hex::decode(KEY_HEX).unwrap();
     let salt = hex::decode(SALT_HEX).unwrap();
     let plaintext = hex::decode(PLAINTEXT_HEX).unwrap();
 
     let ciphertext = encrypt(&key.try_into().unwrap(), &salt.try_into().unwrap(), &plaintext);
-    assert_eq!(hex::encode(ciphertext),CIPHERTEXT_HEX);
+    assert_eq!(hex::encode(ciphertext), CIPHERTEXT_HEX);
+}
 
+#[test]
+fn test_encrypt2() {
+    let password = hex::decode(PASSWORD_HEX).unwrap();
+    let plaintext = hex::decode(PLAINTEXT_HEX).unwrap();
 
+    let ciphertext = encrypt_with_password(&password, &plaintext);
+    assert_eq!(ciphertext.len(), VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + plaintext.len() + CHACHAPOLY_TAG_LEN);
 }
