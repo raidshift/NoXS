@@ -3,17 +3,6 @@
 version = 3
 
 [[package]]
-name = "NoXS"
-version = "1.2.0"
-dependencies = [
- "argon2-kdf",
- "chacha20poly1305",
- "hex",
- "rand",
- "rand_chacha",
-]
-
-[[package]]
 name = "aead"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -316,6 +305,17 @@ checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
  "memchr",
  "minimal-lexical",
+]
+
+[[package]]
+name = "noxs"
+version = "1.2.0"
+dependencies = [
+ "argon2-kdf",
+ "chacha20poly1305",
+ "hex",
+ "rand",
+ "rand_chacha",
 ]
 
 [[package]]

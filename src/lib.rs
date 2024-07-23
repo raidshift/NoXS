@@ -1,5 +1,4 @@
 use core::panic;
-
 use argon2_kdf::{Algorithm, Hasher};
 use chacha20poly1305::{
     aead::{Aead, KeyInit},
@@ -88,12 +87,13 @@ pub fn decrypt(key: &[u8; ARGON2ID_KEY_LEN], ciphertext: &[u8]) -> Result<Vec<u8
 }
 
 pub fn decrypt_with_password(password: &str, ciphertext: &[u8]) -> Result<Vec<u8>, NoXSErr> {
+    println!("{} {}",ciphertext.len(),VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN);
     if ciphertext.len() < VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN || ciphertext[0] != VERSION {
         return Err(NoXSErr::Format);
     }
 
     let salt = &ciphertext[VERSION_PREFIX_LEN..VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN];
     let key = derive_key(password, salt.try_into().unwrap());
-    
+
     decrypt(&key, ciphertext)
 }
