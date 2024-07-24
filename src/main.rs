@@ -1,4 +1,5 @@
 use noxs::{decrypt_with_password, derive_key_with_salt, encrypt_with_password};
+use std::{env, fs};
 
 const COMMANDS: [&str; 4] = ["ea", "e", "da", "d"];
 
@@ -29,18 +30,51 @@ fn exit_with_error(out: &str) -> ! {
     std::process::exit(1);
 }
 
-fn main() {
-    let password = "Hello".as_bytes();
-    let plaintext = "💖".as_bytes();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = env::args().collect();
 
-    let (key, salt) = derive_key_with_salt(&password);
-    println!("key : {}", hex::encode(&key));
-    println!("salt: {}", hex::encode(&salt));
-    println!("plai: {}", hex::encode(&plaintext));
+    if args.len() < 4 || args.len() > 5 || !COMMANDS.contains(&args[1].as_str()) {
+        exit_with_error(STD_ERR_INFO);
+    }
 
-    let ciphertext = encrypt_with_password(&password, plaintext).unwrap();
-    println!("ciph: {}", hex::encode(&ciphertext));
+    if args.len() < 4 || args.len() > 5 || !COMMANDS.contains(&args[1].as_str()) {
+        exit_with_error(STD_ERR_INFO);
+    }
 
-    let plaintext = decrypt_with_password(&password, &ciphertext.to_vec()).unwrap();
-    println!("{}", String::from_utf8_lossy(&plaintext))
+    let in_path = &args[2];
+    let out_path = &args[3];
+
+    if in_path == out_path {
+        exit_with_error(STD_ERR_EQUAL_OUT_IN);
+    }
+
+    let mut password = Vec::new();
+    let mut password_from_file = false;
+
+    if args.len() == 5 {
+        let passwd_path = &args[4];
+        if passwd_path == out_path {
+            exit_with_error(STD_ERR_EQUAL_PASSWD_OUT);
+        }
+        password = fs::read(passwd_path)?;
+        password_from_file = true;
+    }
+
+    Ok(())
 }
+
+// fn main() {
+//     let password = "Hello".as_bytes();
+//     let plaintext = "💖".as_bytes();
+
+//     let (key, salt) = derive_key_with_salt(&password);
+//     println!("key : {}", hex::encode(&key));
+//     println!("salt: {}", hex::encode(&salt));
+//     println!("plai: {}", hex::encode(&plaintext));
+
+//     let ciphertext = encrypt_with_password(&password, plaintext).unwrap();
+//     println!("ciph: {}", hex::encode(&ciphertext));
+
+//     let plaintext = decrypt_with_password(&password, &ciphertext.to_vec()).unwrap();
+//     println!("{}", String::from_utf8_lossy(&plaintext))
+// }
