@@ -62,7 +62,7 @@ fn decrypt3() {
     let password = hex::decode(PASSWORD_HEX).unwrap();
     let ciphertext = hex::decode(format!("{}{}{}", VERSION_HEX, SALT_HEX, TAG_HEX)).unwrap();
     let result = decrypt_with_password(&password, &ciphertext);
-    assert!(matches!(result, Err(Error::DecryptionFailed)));
+    assert!(matches!(result, Err(CipherError::DecryptionFailed)));
 }
 
 #[test]
@@ -70,7 +70,7 @@ fn decrypt4() {
     let password = hex::decode(PASSWORD_HEX).unwrap();
     let ciphertext = hex::decode(format!("{}{}{}", "ff", SALT_HEX, TAG_HEX)).unwrap();
     let result = decrypt_with_password(&password, &ciphertext);
-    assert!(matches!(result, Err(Error::InvalidCiphertext)));
+    assert!(matches!(result, Err(CipherError::InvalidCiphertext)));
 }
 
 #[test]
@@ -78,7 +78,7 @@ fn decrypt5() {
     let password = hex::decode(PASSWORD_HEX).unwrap();
     let ciphertext = hex::decode(format!("{}{}", VERSION_HEX, SALT_HEX)).unwrap();
     let result = decrypt_with_password(&password, &ciphertext);
-    assert!(matches!(result, Err(Error::InvalidCiphertext)));
+    assert!(matches!(result, Err(CipherError::InvalidCiphertext)));
 }
 
 #[test]

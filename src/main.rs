@@ -21,6 +21,7 @@ Commands:
 const STD_ERR_FILE_NOT_FOUND: &str = "File not found";
 const STD_ERR_PASSWORD_NO_MATCH: &str = "Passwords do not match";
 const STD_ERR_EQUAL_OUT_IN: &str = "<out_file> must not be <in_file>";
+const STD_ERR_EQUAL_PASSWD_IN: &str = "<passwd_file> must not be <in_file>";
 const STD_ERR_EQUAL_PASSWD_OUT: &str = "<passwd_file> must not be <out_file>";
 const STD_OUT_ENTER_PASSWORD: &str = "Enter password:";
 const STD_OUT_CONFIRM_PASSWORD: &str = "Confirm password:";
@@ -31,15 +32,15 @@ fn exit_with_error(out: &str) -> ! {
     std::process::exit(1);
 }
 
-// fn read_file(path: &str) -> Vec<u8> {
-//     match fs::read(path) {
-//         Ok(content) => content,
-//         Err(e) => match e.kind() {
-//             io::ErrorKind::NotFound => exit_with_error(&format!("{} ({})", STD_ERR_FILE_NOT_FOUND, path)),
-//             _ => exit_with_error(&e.to_string()),
-//         },
-//     }
-// }
+fn read_file(path: &str) -> Vec<u8> {
+    match fs::read(path) {
+        Ok(content) => content,
+        Err(e) => match e.kind() {
+            io::ErrorKind::NotFound => exit_with_error(&format!("{} ({})", STD_ERR_FILE_NOT_FOUND, path)),
+            _ => exit_with_error(&e.to_string()),
+        },
+    }
+}
 
 fn get_password(prompt: &str) -> Vec<u8> {
     print!("{}", prompt);
@@ -48,7 +49,7 @@ fn get_password(prompt: &str) -> Vec<u8> {
     password.into_bytes()
 }
 
-fn main() -> std::io::Result<()> {
+fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 4 || args.len() > 5 || !COMMANDS.contains(&args[1].as_str()) {
@@ -71,20 +72,23 @@ fn main() -> std::io::Result<()> {
 
     if args.len() == 5 {
         let passwd_path = &args[4];
+        if passwd_path == in_path {
+            exit_with_error(STD_ERR_EQUAL_PASSWD_IN);
+        }
         if passwd_path == out_path {
             exit_with_error(STD_ERR_EQUAL_PASSWD_OUT);
         }
         // password = fs::read(passwd_path).expect("errrrrr");
-        password = fs::read(passwd_path)?;
+        password = read_file(passwd_path);
         password_from_file = true;
     }
 
-    let mut data = fs::read(in_path)?;
-    
+    let data = read_file(in_path);
     let is_base64data;
+
     match args[1].as_str() {
         "ea" | "da" => is_base64data = true,
-        _ => is_base64data = false
+        _ => is_base64data = false,
     }
 
     match args[1].as_str() {
@@ -97,13 +101,23 @@ fn main() -> std::io::Result<()> {
                     exit_with_error(STD_ERR_PASSWORD_NO_MATCH);
                 }
             }
-            // let encrypted_data = encrypt(&password, &data)?;
-            // if is_base64data {
-            //     let base64_encoded_data = encode(&encrypted_data);
-            //     fs::write(out_path, base64_encoded_data)?;
-            // } else {
-            //     fs::write(out_path, encrypted_data)?;
-            // }
+
+            match (encrypt_with_password(&password, &data)) {
+                Ok(encrypted_data) => {
+                    // if is_base64data {
+                    //     let base64_encoded_data = encode(&encrypted_data);
+                    //     fs::write(out_path, base64_encoded_data)?;
+                    // } else {
+                    //     fs::write(out_path, encrypted_data)?;
+                    // }
+                    println!("{}",hex::encode(encrypted_data)) // remove
+                }
+                Err(e) => {
+                    exit_with_error(&e.to_string())
+                }
+            }
+
+            let encrypted_data = encrypt_with_password(&password, &data);
         }
 
         "d" | "da" => {
@@ -118,7 +132,6 @@ fn main() -> std::io::Result<()> {
         }
         _ => exit_with_error(STD_ERR_PASSWORD_NO_MATCH),
     }
-    Ok(())
 }
 
 // fn main() {
