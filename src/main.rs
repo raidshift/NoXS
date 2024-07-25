@@ -1,3 +1,4 @@
+use base64::{decode, encode};
 use noxs::{decrypt_with_password, derive_key_with_salt, encrypt_with_password};
 use std::{env, fs, io};
 
@@ -40,6 +41,14 @@ fn read_file(path: &str) -> Vec<u8> {
             _ => exit_with_error(&e.to_string()),
         },
     }
+}
+
+fn write_file(path: &str, data: &[u8]) {
+    match fs::write(path, data) {
+        Err(e) => exit_with_error(&e.to_string()),
+        _ => {}
+    }
+
 }
 
 fn get_password(prompt: &str) -> Vec<u8> {
@@ -104,17 +113,15 @@ fn main() {
 
             match (encrypt_with_password(&password, &data)) {
                 Ok(encrypted_data) => {
-                    // if is_base64data {
-                    //     let base64_encoded_data = encode(&encrypted_data);
-                    //     fs::write(out_path, base64_encoded_data)?;
-                    // } else {
-                    //     fs::write(out_path, encrypted_data)?;
-                    // }
-                    println!("{}",hex::encode(encrypted_data)) // remove
+                    if is_base64data {
+                        let base64_encoded_data = encode(&encrypted_data);
+                        write_file(out_path, &base64_encoded_data.as_bytes());
+                    } else {
+                        write_file(out_path, &encrypted_data);
+                    }
+                    println!("{}", hex::encode(encrypted_data)) // remove
                 }
-                Err(e) => {
-                    exit_with_error(&e.to_string())
-                }
+                Err(e) => exit_with_error(&e.to_string()),
             }
 
             let encrypted_data = encrypt_with_password(&password, &data);
