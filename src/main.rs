@@ -1,5 +1,5 @@
 use noxs::{decrypt_with_password, derive_key_with_salt, encrypt_with_password};
-use std::{env, fs};
+use std::{env, fs, io};
 
 const COMMANDS: [&str; 4] = ["ea", "e", "da", "d"];
 
@@ -18,6 +18,7 @@ Commands:
 
 ";
 
+const STD_ERR_FILE_NOT_FOUND: &str = "File not found";
 const STD_ERR_PASSWORD_NO_MATCH: &str = "Passwords do not match";
 const STD_ERR_EQUAL_OUT_IN: &str = "<out_file> must not be <in_file>";
 const STD_ERR_EQUAL_PASSWD_OUT: &str = "<passwd_file> must not be <out_file>";
@@ -30,7 +31,24 @@ fn exit_with_error(out: &str) -> ! {
     std::process::exit(1);
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+// fn read_file(path: &str) -> Vec<u8> {
+//     match fs::read(path) {
+//         Ok(content) => content,
+//         Err(e) => match e.kind() {
+//             io::ErrorKind::NotFound => exit_with_error(&format!("{} ({})", STD_ERR_FILE_NOT_FOUND, path)),
+//             _ => exit_with_error(&e.to_string()),
+//         },
+//     }
+// }
+
+fn get_password(prompt: &str) -> Vec<u8> {
+    print!("{}", prompt);
+    io::Write::flush(&mut io::stdout()).unwrap();
+    let password = rpassword::read_password().unwrap();
+    password.into_bytes()
+}
+
+fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 4 || args.len() > 5 || !COMMANDS.contains(&args[1].as_str()) {
@@ -56,10 +74,50 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if passwd_path == out_path {
             exit_with_error(STD_ERR_EQUAL_PASSWD_OUT);
         }
+        // password = fs::read(passwd_path).expect("errrrrr");
         password = fs::read(passwd_path)?;
         password_from_file = true;
     }
 
+    let mut data = fs::read(in_path)?;
+    
+    let is_base64data;
+    match args[1].as_str() {
+        "ea" | "da" => is_base64data = true,
+        _ => is_base64data = false
+    }
+
+    match args[1].as_str() {
+        "e" | "ea" => {
+            let confirm_password;
+            if !password_from_file {
+                password = get_password(STD_OUT_ENTER_PASSWORD);
+                confirm_password = get_password(STD_OUT_CONFIRM_PASSWORD);
+                if password != confirm_password {
+                    exit_with_error(STD_ERR_PASSWORD_NO_MATCH);
+                }
+            }
+            // let encrypted_data = encrypt(&password, &data)?;
+            // if is_base64data {
+            //     let base64_encoded_data = encode(&encrypted_data);
+            //     fs::write(out_path, base64_encoded_data)?;
+            // } else {
+            //     fs::write(out_path, encrypted_data)?;
+            // }
+        }
+
+        "d" | "da" => {
+            if !password_from_file {
+                password = get_password(STD_OUT_ENTER_PASSWORD);
+            }
+            // if is_base64data {
+            //     data = decode(&data).map_err(|_| DataError::FormatBase64)?;
+            // }
+            // let decrypted_data = decrypt(&password, &data)?;
+            // fs::write(out_path, decrypted_data)?;
+        }
+        _ => exit_with_error(STD_ERR_PASSWORD_NO_MATCH),
+    }
     Ok(())
 }
 
