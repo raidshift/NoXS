@@ -1,5 +1,5 @@
-use base64::{decode, encode};
-use noxs::{decrypt_with_password, derive_key_with_salt, encrypt_with_password};
+use base64::{engine::general_purpose, Engine};
+use noxs::{decrypt_with_password, encrypt_with_password};
 use std::{env, fs, io};
 
 const COMMANDS: [&str; 4] = ["ea", "e", "da", "d"];
@@ -48,7 +48,6 @@ fn write_file(path: &str, data: &[u8]) {
         Err(e) => exit_with_error(&e.to_string()),
         _ => {}
     }
-
 }
 
 fn get_password(prompt: &str) -> Vec<u8> {
@@ -60,10 +59,6 @@ fn get_password(prompt: &str) -> Vec<u8> {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-
-    if args.len() < 4 || args.len() > 5 || !COMMANDS.contains(&args[1].as_str()) {
-        exit_with_error(STD_ERR_INFO);
-    }
 
     if args.len() < 4 || args.len() > 5 || !COMMANDS.contains(&args[1].as_str()) {
         exit_with_error(STD_ERR_INFO);
@@ -87,12 +82,11 @@ fn main() {
         if passwd_path == out_path {
             exit_with_error(STD_ERR_EQUAL_PASSWD_OUT);
         }
-        // password = fs::read(passwd_path).expect("errrrrr");
         password = read_file(passwd_path);
         password_from_file = true;
     }
 
-    let data = read_file(in_path);
+    let mut data = read_file(in_path);
     let is_base64data;
 
     match args[1].as_str() {
@@ -111,48 +105,33 @@ fn main() {
                 }
             }
 
-            match (encrypt_with_password(&password, &data)) {
+            match encrypt_with_password(&password, &data) {
                 Ok(encrypted_data) => {
                     if is_base64data {
-                        let base64_encoded_data = encode(&encrypted_data);
-                        write_file(out_path, &base64_encoded_data.as_bytes());
+                        write_file(out_path, &general_purpose::STANDARD.encode(&encrypted_data).as_bytes());
                     } else {
                         write_file(out_path, &encrypted_data);
                     }
-                    println!("{}", hex::encode(encrypted_data)) // remove
                 }
                 Err(e) => exit_with_error(&e.to_string()),
             }
-
-            let encrypted_data = encrypt_with_password(&password, &data);
         }
 
         "d" | "da" => {
             if !password_from_file {
                 password = get_password(STD_OUT_ENTER_PASSWORD);
             }
-            // if is_base64data {
-            //     data = decode(&data).map_err(|_| DataError::FormatBase64)?;
-            // }
-            // let decrypted_data = decrypt(&password, &data)?;
-            // fs::write(out_path, decrypted_data)?;
+            if is_base64data {
+                match general_purpose::STANDARD.decode(data) {
+                    Ok(d) => data = d,
+                    Err(_) => exit_with_error(DATA_ERR_TEXT_FORMAT_BASE64),
+                }
+            }
+            match decrypt_with_password(&password, &data) {
+                Ok(decrypted_data) => write_file(&out_path, &decrypted_data),
+                Err(e) => exit_with_error(&e.to_string()),
+            }
         }
-        _ => exit_with_error(STD_ERR_PASSWORD_NO_MATCH),
+        _ => {}
     }
 }
-
-// fn main() {
-//     let password = "Hello".as_bytes();
-//     let plaintext = "💖".as_bytes();
-
-//     let (key, salt) = derive_key_with_salt(&password);
-//     println!("key : {}", hex::encode(&key));
-//     println!("salt: {}", hex::encode(&salt));
-//     println!("plai: {}", hex::encode(&plaintext));
-
-//     let ciphertext = encrypt_with_password(&password, plaintext).unwrap();
-//     println!("ciph: {}", hex::encode(&ciphertext));
-
-//     let plaintext = decrypt_with_password(&password, &ciphertext.to_vec()).unwrap();
-//     println!("{}", String::from_utf8_lossy(&plaintext))
-// }
