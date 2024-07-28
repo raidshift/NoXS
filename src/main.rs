@@ -6,7 +6,7 @@ const COMMANDS: [&str; 4] = ["ea", "e", "da", "d"];
 
 const STD_ERR_INFO: &str = "
 
-NoXS V1.2.R  (https://github.com/raidshift/noxs)
+NoXS V1.2.R (https://github.com/raidshift/noxs)
 
 Usage:
    noxs <cmd> <in_file> <out_file>
