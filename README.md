@@ -1,6 +1,6 @@
 # NoXS
  
-* Command Line Tool & Library for authenticated encryption with password-based key derivation
+* Command line tool & library for authenticated encryption with password-based key derivation
   
 ## Key derivation: Argon2id
   * Parameters: iterations = 2, memory = 1024*256, parallelism = 2
@@ -8,8 +8,8 @@
   * Output: key (32 bytes)
 
 ## Authenticated encryption: ChaCha20-Poly1305
-  * Input: key (32 bytes), nonce (last 12 bytes from salt), plaintext
-  * Output: version 0x01 (1 byte) || salt (16 bytes) || ciphertext || authentication tag (16 bytes)
+  * Input: key (32 bytes), nonce (last 12 bytes from salt), plaintext (n bytes)
+  * Output: version 0x01 (1 byte) || salt (16 bytes) || ciphertext (n bytes) || authentication tag (16 bytes)
     ![image](https://github.com/raidshift/NoXS/assets/51262620/4e364805-0950-4c28-be78-daacc41b88e8)
 
 ## Usage
