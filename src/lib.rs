@@ -73,15 +73,15 @@ pub fn derive_key_with_salt(password: &[u8]) -> ([u8; ARGON2ID_KEY_LEN], [u8; AR
 }
 
 pub fn encrypt(key: &[u8; ARGON2ID_KEY_LEN], salt: &[u8; ARGON2ID_SALT_LEN], plaintext: &[u8]) -> Result<Vec<u8>, CipherError> {
-    match ChaCha20Poly1305::new(Key::from_slice(key)).encrypt(Nonce::from_slice(&salt[ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN..]), plaintext) {
-        Ok(cipher) => {
+    ChaCha20Poly1305::new(Key::from_slice(key))
+        .encrypt(Nonce::from_slice(&salt[ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN..]), plaintext)
+        .map(|cipher| {
             let mut ciphertext = vec![VERSION];
             ciphertext.extend_from_slice(salt);
             ciphertext.extend_from_slice(&cipher);
-            Ok(ciphertext)
-        }
-        Err(_) => Err(CipherError::EncryptionFailed),
-    }
+            ciphertext
+        })
+        .map_err(|_| CipherError::EncryptionFailed)
 }
 
 pub fn encrypt_with_password(password: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, CipherError> {
