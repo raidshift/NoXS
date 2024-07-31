@@ -1,5 +1,3 @@
-use std::result;
-
 use noxs::*;
 
 const PASSWORD_HEX: &str = "b102a3049c060f";
