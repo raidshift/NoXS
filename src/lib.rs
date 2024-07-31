@@ -30,15 +30,28 @@ impl Error for CipherError {}
 impl fmt::Display for CipherError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            CipherError::InvalidCiphertext => write!(f,"Invalid ciphertext"),
-            CipherError::DecryptionFailed => write!(f,"Decryption failed"),
-            CipherError::EncryptionFailed => write!(f,"Encryption failed"),
+            CipherError::InvalidCiphertext => write!(f, "Invalid ciphertext"),
+            CipherError::DecryptionFailed => write!(f, "Decryption failed"),
+            CipherError::EncryptionFailed => write!(f, "Encryption failed"),
         }
     }
 }
 
+pub struct CipherText<'a> {
+    verified: &'a [u8],
+}
+
+impl<'a> CipherText<'a> {
+    pub fn new(ciphertext: &'a [u8]) -> Result<Self, CipherError> {
+        if ciphertext.len() < VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN || ciphertext[0] != VERSION {
+            return Err(CipherError::InvalidCiphertext);
+        }
+        Ok(Self { verified: &ciphertext })
+    }
+}
+
 pub fn derive_key(password: &[u8], salt: &[u8; ARGON2ID_SALT_LEN]) -> [u8; ARGON2ID_KEY_LEN] {
-    let hash = Hasher::new()
+    Hasher::new()
         .algorithm(Algorithm::Argon2id)
         .custom_salt(salt)
         .hash_length(ARGON2ID_KEY_LEN.try_into().unwrap())
@@ -46,26 +59,21 @@ pub fn derive_key(password: &[u8], salt: &[u8; ARGON2ID_SALT_LEN]) -> [u8; ARGON
         .memory_cost_kib(ARGON2ID_MEMORY_MB * 1024)
         .threads(ARGON2ID_PARALLELISM)
         .hash(password)
-        .unwrap();
-
-    hash.as_bytes().try_into().unwrap()
+        .unwrap()
+        .as_bytes()
+        .try_into()
+        .unwrap()
 }
 
 pub fn derive_key_with_salt(password: &[u8]) -> ([u8; ARGON2ID_KEY_LEN], [u8; ARGON2ID_SALT_LEN]) {
-    let mut rng = ChaCha20Rng::from_entropy();
     let mut salt = [0u8; ARGON2ID_SALT_LEN];
-
-    rng.fill_bytes(&mut salt);
+    ChaCha20Rng::from_entropy().fill_bytes(&mut salt);
     let key = derive_key(password, &salt);
-
     (key, salt)
 }
 
 pub fn encrypt(key: &[u8; ARGON2ID_KEY_LEN], salt: &[u8; ARGON2ID_SALT_LEN], plaintext: &[u8]) -> Result<Vec<u8>, CipherError> {
-    let chacha = ChaCha20Poly1305::new(Key::from_slice(key));
-    let result = chacha.encrypt(Nonce::from_slice(&salt[ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN..]), plaintext);
-
-    match result {
+    match ChaCha20Poly1305::new(Key::from_slice(key)).encrypt(Nonce::from_slice(&salt[ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN..]), plaintext) {
         Ok(cipher) => {
             let mut ciphertext = vec![VERSION];
             ciphertext.extend_from_slice(salt);
@@ -77,25 +85,19 @@ pub fn encrypt(key: &[u8; ARGON2ID_KEY_LEN], salt: &[u8; ARGON2ID_SALT_LEN], pla
 }
 
 pub fn encrypt_with_password(password: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, CipherError> {
-    let (key, salt) = derive_key_with_salt(password);
-    encrypt(&key, &salt, plaintext)
+    let (key, salt) = &derive_key_with_salt(password);
+    encrypt(key, salt, plaintext)
 }
 
-pub fn decrypt(key: &[u8; ARGON2ID_KEY_LEN], ciphertext: &[u8]) -> Result<Vec<u8>, CipherError> {
-    let nonce_start = VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN;
-    let nonce = &ciphertext[nonce_start..nonce_start + CHACHAPOLY_NONCE_LEN];
-    let chacha = ChaCha20Poly1305::new(Key::from_slice(key));
-
-    chacha.decrypt(Nonce::from_slice(nonce), &ciphertext[nonce_start + CHACHAPOLY_NONCE_LEN..]).map_err(|_| CipherError::DecryptionFailed)
+pub fn decrypt(key: &[u8; ARGON2ID_KEY_LEN], ciphertext: &CipherText) -> Result<Vec<u8>, CipherError> {
+    ChaCha20Poly1305::new(Key::from_slice(key))
+        .decrypt(
+            Nonce::from_slice(&ciphertext.verified[VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN..VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN]),
+            &ciphertext.verified[VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN..],
+        )
+        .map_err(|_| CipherError::DecryptionFailed)
 }
 
-pub fn decrypt_with_password(password: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>, CipherError> {
-    if ciphertext.len() < VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN || ciphertext[0] != VERSION {
-        return Err(CipherError::InvalidCiphertext);
-    }
-
-    let salt = &ciphertext[VERSION_PREFIX_LEN..VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN];
-    let key = derive_key(password, salt.try_into().unwrap());
-
-    decrypt(&key, ciphertext)
+pub fn decrypt_with_password(password: &[u8], ciphertext: &CipherText) -> Result<Vec<u8>, CipherError> {
+    decrypt(&derive_key(password, &ciphertext.verified[VERSION_PREFIX_LEN..VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN].try_into().unwrap()), &ciphertext)
 }

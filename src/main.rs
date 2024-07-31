@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose, Engine};
-use noxs::{decrypt_with_password, encrypt_with_password};
+use noxs::{decrypt_with_password, encrypt_with_password, CipherText};
 use std::{env, fs, io};
 
 const COMMANDS: [&str; 4] = ["ea", "e", "da", "d"];
@@ -34,25 +34,21 @@ fn exit_with_error(out: &str) -> ! {
 }
 
 fn read_file(path: &str) -> Vec<u8> {
-    match fs::read(path) {
-        Ok(content) => content,
-        Err(e) => match e.kind() {
-            io::ErrorKind::NotFound => exit_with_error(&format!("{} ({})", STD_ERR_FILE_NOT_FOUND, path)),
-            _ => exit_with_error(&e.to_string()),
-        },
-    }
+    fs::read(path).unwrap_or_else(|e| {
+        exit_with_error(&match e.kind() {
+            io::ErrorKind::NotFound => format!("{} ({})", STD_ERR_FILE_NOT_FOUND, path),
+            _ => e.to_string(),
+        })
+    })
 }
 
 fn write_file(path: &str, data: &[u8]) {
-    match fs::write(path, data) {
-        Err(e) => exit_with_error(&e.to_string()),
-        _ => {}
-    }
+    fs::write(path, data).unwrap_or_else(|e| exit_with_error(&e.to_string()));
 }
 
 fn get_password(prompt: &str) -> Vec<u8> {
     print!("{}", prompt);
-    io::Write::flush(&mut io::stdout()).unwrap();
+    io::Write::flush(&mut io::stdout()).unwrap_or_else(|e| exit_with_error(&e.to_string()));
     let password = rpassword::read_password().unwrap();
     password.into_bytes()
 }
@@ -105,16 +101,15 @@ fn main() {
                 }
             }
 
-            match encrypt_with_password(&password, &data) {
-                Ok(encrypted_data) => {
+            encrypt_with_password(&password, &data)
+                .map(|encrypted_data| {
                     if is_base64data {
-                        write_file(out_path, &general_purpose::STANDARD.encode(&encrypted_data).as_bytes());
+                        write_file(out_path, &general_purpose::STANDARD.encode(&encrypted_data).as_bytes())
                     } else {
-                        write_file(out_path, &encrypted_data);
+                        write_file(out_path, &encrypted_data)
                     }
-                }
-                Err(e) => exit_with_error(&e.to_string()),
-            }
+                })
+                .unwrap_or_else(|e| exit_with_error(&e.to_string()));
         }
 
         "d" | "da" => {
@@ -122,15 +117,12 @@ fn main() {
                 password = get_password(STD_OUT_ENTER_PASSWORD);
             }
             if is_base64data {
-                match general_purpose::STANDARD.decode(data) {
-                    Ok(d) => data = d,
-                    Err(_) => exit_with_error(DATA_ERR_TEXT_FORMAT_BASE64),
-                }
+                data = general_purpose::STANDARD.decode(data).unwrap_or_else(|_| exit_with_error(DATA_ERR_TEXT_FORMAT_BASE64));
             }
-            match decrypt_with_password(&password, &data) {
-                Ok(decrypted_data) => write_file(&out_path, &decrypted_data),
-                Err(e) => exit_with_error(&e.to_string()),
-            }
+            CipherText::new(&data)
+                .and_then(|ciphertext| decrypt_with_password(&password, &ciphertext))
+                .map(|decrypted_data| write_file(&out_path, &decrypted_data))
+                .unwrap_or_else(|e| exit_with_error(&e.to_string()));
         }
         _ => {}
     }
