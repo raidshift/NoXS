@@ -22,8 +22,7 @@ Commands:
 const STD_ERR_FILE_NOT_FOUND: &str = "File not found";
 const STD_ERR_PASSWORD_NO_MATCH: &str = "Passwords do not match";
 const STD_ERR_EQUAL_OUT_IN: &str = "<out_file> must not be <in_file>";
-const STD_ERR_EQUAL_PASSWD_IN: &str = "<passwd_file> must not be <in_file>";
-const STD_ERR_EQUAL_PASSWD_OUT: &str = "<passwd_file> must not be <out_file>";
+const STD_ERR_EQUAL_PASSWD_IN_OUT: &str = "<passwd_file> must not be <in_file> or <out_file>";
 const STD_OUT_ENTER_PASSWORD: &str = "Enter password:";
 const STD_OUT_CONFIRM_PASSWORD: &str = "Confirm password:";
 const DATA_ERR_TEXT_FORMAT_BASE64: &str = "Input data is not base64 encoded";
@@ -72,11 +71,8 @@ fn main() {
 
     if args.len() == 5 {
         let passwd_path = &args[4];
-        if passwd_path == in_path {
-            exit_with_error(STD_ERR_EQUAL_PASSWD_IN);
-        }
-        if passwd_path == out_path {
-            exit_with_error(STD_ERR_EQUAL_PASSWD_OUT);
+        if passwd_path == in_path || passwd_path == out_path {
+            exit_with_error(STD_ERR_EQUAL_PASSWD_IN_OUT);
         }
         password = read_file(passwd_path);
         password_from_file = true;
