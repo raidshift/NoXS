@@ -79,10 +79,7 @@ fn main() {
     let mut data = read_file(in_path);
     let is_base64data;
 
-    match args[1].as_str() {
-        "ea" | "da" => is_base64data = true,
-        _ => is_base64data = false,
-    }
+    is_base64data = matches!(args[1].as_str(), "ea" | "da");
 
     match args[1].as_str() {
         "e" | "ea" => {

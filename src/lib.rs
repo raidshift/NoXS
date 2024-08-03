@@ -43,10 +43,11 @@ pub struct CipherText<'a> {
 
 impl<'a> CipherText<'a> {
     pub fn new(ciphertext: &'a [u8]) -> Result<Self, CipherError> {
-        if ciphertext.len() < VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN || ciphertext[0] != VERSION {
-            return Err(CipherError::InvalidCiphertext);
+        if ciphertext.len() >= VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN && ciphertext[0] == VERSION {
+            Ok(Self { verified: &ciphertext })
+        } else {
+            Err(CipherError::InvalidCiphertext)
         }
-        Ok(Self { verified: &ciphertext })
     }
 }
 
