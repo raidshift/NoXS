@@ -76,7 +76,13 @@ pub fn derive_key_with_salt(password: &[u8]) -> ([u8; ARGON2ID_KEY_LEN], [u8; AR
 pub fn encrypt(key: &[u8; ARGON2ID_KEY_LEN], salt: &[u8; ARGON2ID_SALT_LEN], plaintext: &[u8]) -> Result<Vec<u8>, CipherError> {
     ChaCha20Poly1305::new(Key::from_slice(key))
         .encrypt(Nonce::from_slice(&salt[ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN..]), plaintext)
-        .map(|cipher| std::iter::once(&VERSION).chain(salt.iter()).chain(cipher.iter()).cloned().collect())
+        .map(|cipher| {
+            let mut result = Vec::with_capacity(1 + salt.len() + cipher.len());
+            result.push(VERSION);
+            result.extend_from_slice(salt);
+            result.extend_from_slice(&cipher);
+            result
+        })
         .map_err(|_| CipherError::EncryptionFailed)
 }
 
