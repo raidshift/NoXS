@@ -34,24 +34,6 @@ impl fmt::Display for CipherError {
     }
 }
 
-// pub struct CipherTextTOBEREMOVED<'a> {
-//     salt: &'a [u8; ARGON2ID_SALT_LEN],
-//     cipher: &'a [u8],
-// }
-
-// impl<'a> CipherTextTOBEREMOVED<'a> {
-//     pub fn new(ciphertext: &'a [u8]) -> Result<Self, CipherError> {
-//         if ciphertext.len() >= VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN && ciphertext[0] == VERSION {
-//             Ok(Self {
-//                 salt: <&[u8; ARGON2ID_SALT_LEN]>::try_from(&ciphertext[VERSION_PREFIX_LEN..VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN]).unwrap(),
-//                 cipher: &ciphertext[VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN..],
-//             })
-//         } else {
-//             Err(CipherError::InvalidCiphertext)
-//         }
-//     }
-// }
-
 pub fn derive_key(password: &[u8], salt: &[u8; ARGON2ID_SALT_LEN]) -> [u8; ARGON2ID_KEY_LEN] {
     Hasher::new()
         .algorithm(Algorithm::Argon2id)

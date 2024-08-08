@@ -35,7 +35,7 @@ fn exit_with_error(out: &str) -> ! {
     std::process::exit(1);
 }
 
-fn read_file(path: &str) -> Vec<u8> {
+fn read_data_from_file(path: &str) -> Vec<u8> {
     fs::read(path).unwrap_or_else(|e| {
         exit_with_error(&match e.kind() {
             io::ErrorKind::NotFound => format!("{} ({})", STD_ERR_FILE_NOT_FOUND, path),
@@ -50,11 +50,11 @@ fn write_io_slices_to_file(path: &str, io_slices: &[IoSlice]) {
     file.write_vectored(io_slices).unwrap_or_else(|e| exit_with_error(&e.to_string()));
 }
 
-fn write_file(path: &str, data: &[u8]) {
+fn write_data_to_file(path: &str, data: &[u8]) {
     fs::write(path, data).unwrap_or_else(|e| exit_with_error(&e.to_string()));
 }
 
-fn get_password(prompt: &str) -> Vec<u8> {
+fn query_password(prompt: &str) -> Vec<u8> {
     print!("{}", prompt);
     io::Write::flush(&mut io::stdout()).unwrap_or_else(|e| exit_with_error(&e.to_string()));
     let password = rpassword::read_password().unwrap();
@@ -83,11 +83,11 @@ fn main() {
         if passwd_path == in_path || passwd_path == out_path {
             exit_with_error(STD_ERR_EQUAL_PASSWD_IN_OUT);
         }
-        password = read_file(passwd_path);
+        password = read_data_from_file(passwd_path);
         password_from_file = true;
     }
 
-    let mut data = read_file(in_path);
+    let mut data = read_data_from_file(in_path);
     let is_base64data;
 
     is_base64data = matches!(args[1].as_str(), "ea" | "da");
@@ -96,8 +96,8 @@ fn main() {
         "e" | "ea" => {
             let confirm_password;
             if !password_from_file {
-                password = get_password(STD_OUT_ENTER_PASSWORD);
-                confirm_password = get_password(STD_OUT_CONFIRM_PASSWORD);
+                password = query_password(STD_OUT_ENTER_PASSWORD);
+                confirm_password = query_password(STD_OUT_CONFIRM_PASSWORD);
                 if password != confirm_password {
                     exit_with_error(STD_ERR_PASSWORD_NO_MATCH);
                 }
@@ -111,7 +111,7 @@ fn main() {
                         combined.extend_from_slice(&salt);
                         combined.extend_from_slice(&ciphertext);
 
-                        write_file(out_path, general_purpose::STANDARD.encode(combined).as_bytes())
+                        write_data_to_file(out_path, general_purpose::STANDARD.encode(combined).as_bytes())
                     } else {
                         write_io_slices_to_file(out_path, &[IoSlice::new(&VERSION), IoSlice::new(&salt), IoSlice::new(&ciphertext)])
                     }
@@ -121,7 +121,7 @@ fn main() {
 
         "d" | "da" => {
             if !password_from_file {
-                password = get_password(STD_OUT_ENTER_PASSWORD);
+                password = query_password(STD_OUT_ENTER_PASSWORD);
             }
             if is_base64data {
                 data = general_purpose::STANDARD.decode(data).unwrap_or_else(|_| exit_with_error(STD_ERR_NOT_BASE64));
@@ -132,7 +132,7 @@ fn main() {
             let ciphertext = data.get(VERSION.len() + ARGON2ID_SALT_LEN..).filter(|slice| slice.len() >= CHACHAPOLY_TAG_LEN).unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
 
             decrypt_with_password(&password, salt.try_into().unwrap(), ciphertext)
-                .map(|decrypted_data| write_file(&out_path, &decrypted_data))
+                .map(|decrypted_data| write_data_to_file(&out_path, &decrypted_data))
                 .unwrap_or_else(|e| exit_with_error(&e.to_string()));
         }
         _ => {}
