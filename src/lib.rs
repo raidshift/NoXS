@@ -1,5 +1,4 @@
 use std::{error::Error, fmt};
-
 use argon2_kdf::{Algorithm, Hasher};
 use chacha20poly1305::{
     aead::{Aead, KeyInit},
@@ -9,12 +8,12 @@ use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
 pub const VERSION_BYTES: [u8; 1] = [1];
-pub const ARGON2ID_ITERATIONS: u32 = 2;
-pub const ARGON2ID_MEMORY_MB: u32 = 256;
-pub const ARGON2ID_PARALLELISM: u32 = 2;
-pub const ARGON2ID_KEY_LEN: usize = 32;
+const ARGON2ID_ITERATIONS: u32 = 2;
+const ARGON2ID_MEMORY_MB: u32 = 256;
+const ARGON2ID_PARALLELISM: u32 = 2;
+const ARGON2ID_KEY_LEN: usize = 32;
 pub const ARGON2ID_SALT_LEN: usize = 16;
-pub const CHACHAPOLY_NONCE_LEN: usize = 12;
+const CHACHAPOLY_NONCE_LEN: usize = 12;
 pub const CHACHAPOLY_TAG_LEN: usize = 16;
 
 #[derive(Debug)]
@@ -34,7 +33,7 @@ impl fmt::Display for CipherError {
     }
 }
 
-pub fn derive_key(password: &[u8], salt: &[u8; ARGON2ID_SALT_LEN]) -> [u8; ARGON2ID_KEY_LEN] {
+fn derive_key(password: &[u8], salt: &[u8; ARGON2ID_SALT_LEN]) -> [u8; ARGON2ID_KEY_LEN] {
     Hasher::new()
         .algorithm(Algorithm::Argon2id)
         .custom_salt(salt)
@@ -49,7 +48,7 @@ pub fn derive_key(password: &[u8], salt: &[u8; ARGON2ID_SALT_LEN]) -> [u8; ARGON
         .unwrap()
 }
 
-pub fn derive_key_with_salt(password: &[u8]) -> ([u8; ARGON2ID_KEY_LEN], [u8; ARGON2ID_SALT_LEN]) {
+fn derive_key_with_salt(password: &[u8]) -> ([u8; ARGON2ID_KEY_LEN], [u8; ARGON2ID_SALT_LEN]) {
     let mut salt = [0u8; ARGON2ID_SALT_LEN];
     ChaCha20Rng::from_entropy().fill_bytes(&mut salt);
     let key = derive_key(password, &salt);
@@ -100,7 +99,6 @@ pub fn decrypt_with_password(
         ciphertext,
     )
 }
-
 
 #[cfg(test)]
 mod tests {
