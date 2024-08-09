@@ -8,7 +8,7 @@ use chacha20poly1305::{
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
-pub const VERSION: [u8;1] = [1];
+pub const VERSION_BYTES: [u8;1] = [1];
 pub const ARGON2ID_ITERATIONS: u32 = 2;
 pub const ARGON2ID_MEMORY_MB: u32 = 256;
 pub const ARGON2ID_PARALLELISM: u32 = 2;

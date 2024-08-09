@@ -46,9 +46,9 @@ fn encrypt3() {
 fn decrypt1() {
     let key = hex::decode(KEY_HEX).unwrap();
     let data = hex::decode(CIPHERTEXT_COMBINED_HEX).unwrap();
-    data.get(..VERSION.len()).filter(|&v| v == &VERSION[..]).unwrap();
-    let salt = data.get(VERSION.len()..VERSION.len() + ARGON2ID_SALT_LEN).unwrap();
-    let ciphertext = data.get(VERSION.len() + ARGON2ID_SALT_LEN..).filter(|slice| slice.len() >= CHACHAPOLY_TAG_LEN).unwrap();
+    data.get(..VERSION_BYTES.len()).filter(|&v| v == &VERSION_BYTES[..]).unwrap();
+    let salt = data.get(VERSION_BYTES.len()..VERSION_BYTES.len() + ARGON2ID_SALT_LEN).unwrap();
+    let ciphertext = data.get(VERSION_BYTES.len() + ARGON2ID_SALT_LEN..).filter(|slice| slice.len() >= CHACHAPOLY_TAG_LEN).unwrap();
     assert_eq!(hex::encode(ciphertext), CIPHERTEXT_HEX);
     let plaintext = decrypt(&key.try_into().unwrap(), salt[ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN..].try_into().unwrap(), ciphertext).unwrap();
     assert_eq!(hex::encode(plaintext), PLAINTEXT_HEX);
@@ -67,9 +67,9 @@ fn decrypt2() {
 fn decrypt3() {
     let password = hex::decode(PASSWORD_HEX).unwrap();
     let data = hex::decode(format!("{}{}{}", VERSION_HEX, SALT_HEX, TAG_HEX)).unwrap();
-    data.get(..VERSION.len()).filter(|&v| v == &VERSION[..]).unwrap();
-    let salt = data.get(VERSION.len()..VERSION.len() + ARGON2ID_SALT_LEN).unwrap();
-    let ciphertext = data.get(VERSION.len() + ARGON2ID_SALT_LEN..).filter(|slice| slice.len() >= CHACHAPOLY_TAG_LEN).unwrap();
+    data.get(..VERSION_BYTES.len()).filter(|&v| v == &VERSION_BYTES[..]).unwrap();
+    let salt = data.get(VERSION_BYTES.len()..VERSION_BYTES.len() + ARGON2ID_SALT_LEN).unwrap();
+    let ciphertext = data.get(VERSION_BYTES.len() + ARGON2ID_SALT_LEN..).filter(|slice| slice.len() >= CHACHAPOLY_TAG_LEN).unwrap();
     let result = decrypt_with_password(&password, &salt.try_into().unwrap(), &ciphertext);
     assert!(matches!(result, Err(CipherError::DecryptionFailed)));
 }
@@ -77,18 +77,18 @@ fn decrypt3() {
 #[test]
 fn decrypt4() {
     let data = hex::decode(format!("ff{}{}", SALT_HEX, TAG_HEX)).unwrap();
-    let version = data.get(..VERSION.len()).filter(|&v| v == &VERSION[..]);
+    let version = data.get(..VERSION_BYTES.len()).filter(|&v| v == &VERSION_BYTES[..]);
     assert!(matches!(version, None));
-    let salt = data.get(VERSION.len()..VERSION.len() + ARGON2ID_SALT_LEN).unwrap();
+    let salt = data.get(VERSION_BYTES.len()..VERSION_BYTES.len() + ARGON2ID_SALT_LEN).unwrap();
     assert_eq!(salt.len(), ARGON2ID_SALT_LEN);
-    let ciphertext = data.get(VERSION.len() + ARGON2ID_SALT_LEN..).filter(|slice| slice.len() >= CHACHAPOLY_TAG_LEN).unwrap();
+    let ciphertext = data.get(VERSION_BYTES.len() + ARGON2ID_SALT_LEN..).filter(|slice| slice.len() >= CHACHAPOLY_TAG_LEN).unwrap();
     assert_eq!(ciphertext.len(), CHACHAPOLY_TAG_LEN);
 }
 
 #[test]
 fn decrypt5() {
     let data = hex::decode(format!("{}{}", SALT_HEX, TAG_HEX)).unwrap();
-    let ciphertext = data.get(VERSION.len() + ARGON2ID_SALT_LEN..).filter(|slice| slice.len() >= CHACHAPOLY_TAG_LEN);
+    let ciphertext = data.get(VERSION_BYTES.len() + ARGON2ID_SALT_LEN..).filter(|slice| slice.len() >= CHACHAPOLY_TAG_LEN);
     assert!(matches!(ciphertext, None));
 }
 
@@ -99,7 +99,7 @@ fn combined1() {
     let (salt, ciphertext) = encrypt_with_password(&password, &plaintext).unwrap();
     assert_eq!(ciphertext.len(), plaintext.len() + CHACHAPOLY_TAG_LEN);
     let mut ciphertext_combined = Vec::new();
-    ciphertext_combined.extend_from_slice(&VERSION);
+    ciphertext_combined.extend_from_slice(&VERSION_BYTES);
     ciphertext_combined.extend_from_slice(&salt);
     ciphertext_combined.extend_from_slice(&ciphertext);
     let plaintext2 = decrypt_with_password(&password, &salt,&ciphertext).unwrap();
