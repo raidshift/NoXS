@@ -15,9 +15,9 @@ const STD_ERR_INFO: &str = "
       od$$$$oo      NoXS V1.2.R (https://github.com/raidshift/noxs)
      $$*°  °?$$
     d$$      ?$b    Usage:
-    d$b      d$b     noxs <cmd> <in_file> <out_file>
+    d$b      d$b      noxs <cmd> <in_file> <out_file>
   d$$$$$$$$$$$$$$o                      or
-  $$$$$$$$$$$$$$$$   noxs <cmd> <in_file> <out_file> <passw_file>
+  $$$$$$$$$$$$$$$$    noxs <cmd> <in_file> <out_file> <passw_file>
   $$$$$$$  $$$$$$$
   $$$$$$$  $$$$$$$  Commands:
   $$$$$$$$$$$$$$$$    e = encrypt  |  ea = encrypt & base64-encode
