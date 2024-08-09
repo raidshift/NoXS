@@ -1,5 +1,8 @@
 use base64::{engine::general_purpose, Engine};
-use noxs::{decrypt_with_password, encrypt_with_password, ARGON2ID_SALT_LEN, CHACHAPOLY_TAG_LEN, VERSION_BYTES};
+use noxs::{
+    decrypt_with_password, encrypt_with_password, ARGON2ID_SALT_LEN, CHACHAPOLY_TAG_LEN,
+    VERSION_BYTES,
+};
 use std::{
     env,
     fs::{self, File},
@@ -47,7 +50,8 @@ fn read_data_from_file(path: &str) -> Vec<u8> {
 fn write_io_slices_to_file(path: &str, io_slices: &[IoSlice]) {
     let mut file = File::create(path).unwrap_or_else(|e| exit_with_error(&e.to_string()));
 
-    file.write_vectored(io_slices).unwrap_or_else(|e| exit_with_error(&e.to_string()));
+    file.write_vectored(io_slices)
+        .unwrap_or_else(|e| exit_with_error(&e.to_string()));
 }
 
 fn write_data_to_file(path: &str, data: &[u8]) {
@@ -111,9 +115,19 @@ fn main() {
                         combined.extend_from_slice(&salt);
                         combined.extend_from_slice(&ciphertext);
 
-                        write_data_to_file(out_path, general_purpose::STANDARD.encode(combined).as_bytes())
+                        write_data_to_file(
+                            out_path,
+                            general_purpose::STANDARD.encode(combined).as_bytes(),
+                        )
                     } else {
-                        write_io_slices_to_file(out_path, &[IoSlice::new(&VERSION_BYTES), IoSlice::new(&salt), IoSlice::new(&ciphertext)])
+                        write_io_slices_to_file(
+                            out_path,
+                            &[
+                                IoSlice::new(&VERSION_BYTES),
+                                IoSlice::new(&salt),
+                                IoSlice::new(&ciphertext),
+                            ],
+                        )
                     }
                 })
                 .unwrap_or_else(|e| exit_with_error(&e.to_string()));
@@ -124,12 +138,21 @@ fn main() {
                 password = query_password(STD_OUT_ENTER_PASSWORD);
             }
             if is_base64data {
-                data = general_purpose::STANDARD.decode(data).unwrap_or_else(|_| exit_with_error(STD_ERR_NOT_BASE64));
+                data = general_purpose::STANDARD
+                    .decode(data)
+                    .unwrap_or_else(|_| exit_with_error(STD_ERR_NOT_BASE64));
             }
 
-            data.get(..VERSION_BYTES.len()).filter(|&v| v == &VERSION_BYTES[..]).unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
-            let salt = data.get(VERSION_BYTES.len()..VERSION_BYTES.len() + ARGON2ID_SALT_LEN).unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
-            let ciphertext = data.get(VERSION_BYTES.len() + ARGON2ID_SALT_LEN..).filter(|slice| slice.len() >= CHACHAPOLY_TAG_LEN).unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
+            data.get(..VERSION_BYTES.len())
+                .filter(|&v| v == &VERSION_BYTES[..])
+                .unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
+            let salt = data
+                .get(VERSION_BYTES.len()..VERSION_BYTES.len() + ARGON2ID_SALT_LEN)
+                .unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
+            let ciphertext = data
+                .get(VERSION_BYTES.len() + ARGON2ID_SALT_LEN..)
+                .filter(|slice| slice.len() >= CHACHAPOLY_TAG_LEN)
+                .unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
 
             decrypt_with_password(&password, salt.try_into().unwrap(), ciphertext)
                 .map(|decrypted_data| write_data_to_file(&out_path, &decrypted_data))

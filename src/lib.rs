@@ -8,7 +8,7 @@ use chacha20poly1305::{
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
-pub const VERSION_BYTES: [u8;1] = [1];
+pub const VERSION_BYTES: [u8; 1] = [1];
 pub const ARGON2ID_ITERATIONS: u32 = 2;
 pub const ARGON2ID_MEMORY_MB: u32 = 256;
 pub const ARGON2ID_PARALLELISM: u32 = 2;
@@ -56,23 +56,47 @@ pub fn derive_key_with_salt(password: &[u8]) -> ([u8; ARGON2ID_KEY_LEN], [u8; AR
     (key, salt)
 }
 
-pub fn encrypt(key: &[u8; ARGON2ID_KEY_LEN], salt: &[u8; ARGON2ID_SALT_LEN], plaintext: &[u8]) -> Result<Vec<u8>, CipherError> {
+pub fn encrypt(
+    key: &[u8; ARGON2ID_KEY_LEN],
+    salt: &[u8; ARGON2ID_SALT_LEN],
+    plaintext: &[u8],
+) -> Result<Vec<u8>, CipherError> {
     ChaCha20Poly1305::new(Key::from_slice(key))
-        .encrypt(Nonce::from_slice(&salt[ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN..]), plaintext)
+        .encrypt(
+            Nonce::from_slice(&salt[ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN..]),
+            plaintext,
+        )
         .map_err(|_| CipherError::EncryptionFailed)
 }
 
-pub fn encrypt_with_password(password: &[u8], plaintext: &[u8]) -> Result<([u8; ARGON2ID_SALT_LEN], Vec<u8>), CipherError> {
+pub fn encrypt_with_password(
+    password: &[u8],
+    plaintext: &[u8],
+) -> Result<([u8; ARGON2ID_SALT_LEN], Vec<u8>), CipherError> {
     let (key, salt) = &derive_key_with_salt(password);
     Ok((*salt, encrypt(key, salt, plaintext)?))
 }
 
-pub fn decrypt(key: &[u8; ARGON2ID_KEY_LEN], nonce: &[u8; CHACHAPOLY_NONCE_LEN], ciphertext: &[u8]) -> Result<Vec<u8>, CipherError> {
+pub fn decrypt(
+    key: &[u8; ARGON2ID_KEY_LEN],
+    nonce: &[u8; CHACHAPOLY_NONCE_LEN],
+    ciphertext: &[u8],
+) -> Result<Vec<u8>, CipherError> {
     ChaCha20Poly1305::new(Key::from_slice(key))
         .decrypt(Nonce::from_slice(nonce), ciphertext)
         .map_err(|_| CipherError::DecryptionFailed)
 }
 
-pub fn decrypt_with_password(password: &[u8], salt: &[u8; ARGON2ID_SALT_LEN], ciphertext: &[u8]) -> Result<Vec<u8>, CipherError> {
-    decrypt(&derive_key(password, salt), salt[ARGON2ID_SALT_LEN-CHACHAPOLY_NONCE_LEN..].try_into().unwrap(),ciphertext)
+pub fn decrypt_with_password(
+    password: &[u8],
+    salt: &[u8; ARGON2ID_SALT_LEN],
+    ciphertext: &[u8],
+) -> Result<Vec<u8>, CipherError> {
+    decrypt(
+        &derive_key(password, salt),
+        salt[ARGON2ID_SALT_LEN - CHACHAPOLY_NONCE_LEN..]
+            .try_into()
+            .unwrap(),
+        ciphertext,
+    )
 }
