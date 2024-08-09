@@ -57,7 +57,7 @@ fn write_data_to_file(path: &str, data: &[u8]) {
 
 fn query_password(prompt: &str) -> Vec<u8> {
     print!("{}", prompt);
-    io::Write::flush(&mut io::stdout()).unwrap_or_else(|e| exit_with_error(&e.to_string()));
+    io::stdout().flush().unwrap();
     let password = rpassword::read_password().unwrap();
     password.into_bytes()
 }
