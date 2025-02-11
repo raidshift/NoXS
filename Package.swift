@@ -19,13 +19,15 @@ let package = Package(
 
     dependencies: [
         .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "3.0.0"),
+        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", from: "1.7.2"),
         .package(url: "https://github.com/raidshift/phc-winner-argon2", from: "1.0.0"),
+
     ],
 
     targets: [
         .target(
             name: "NoXS",
-            dependencies: [.product(name: "Crypto", package: "swift-crypto"),.product(name: "argon2", package: "phc-winner-argon2")],
+            dependencies: [.product(name: "Crypto", package: "swift-crypto"), .product(name: "CryptoSwift", package: "CryptoSwift"), .product(name: "argon2", package: "phc-winner-argon2")],
             path: "Sources/Lib"
         ),
         .testTarget(
