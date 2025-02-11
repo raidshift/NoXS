@@ -154,11 +154,11 @@ public func decrypt(key: inout Data, ciphertext: inout Data) throws -> Data {
         }
 
         if !result.success { throw NOXS_ERR.CORE_CIPHER }
-        // return result.plainText.withUnsafeBytes { bytes in
-        //     Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: bytes.baseAddress!), count: bytes.count, deallocator: .none)
-        // }
+        return result.plainText.withUnsafeBytes { bytes in
+            Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: bytes.baseAddress!), count: bytes.count, deallocator: .none)
+        }
 
-        return Data(result.plainText)
+        // return Data(result.plainText)
 
     } catch {
         throw NOXS_ERR.CORE_CIPHER
