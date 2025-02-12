@@ -47,7 +47,7 @@ public enum NOXS_ERR: Error {
 
 let NOXS_ERR_STR_DATA = "Invalid input data"
 let NOXS_ERR_STR_ENCRYPT: String = "Encryption failed"
-let NOXS_ERR_STR_DECRYPT: String = "Encryption failed"
+let NOXS_ERR_STR_DECRYPT: String = "Decryption failed"
 
 extension NOXS_ERR: LocalizedError {
     public var errorDescription: String? {
