@@ -180,10 +180,10 @@ public func decrypt(password: inout Data, ciphertext: inout Data) throws -> Data
 
     if ciphertext.count < VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN { throw NOXS_ERR.FORMAT }
 
-    var salt = ciphertext.withUnsafeMutableBytes { cipherBytes in
-        Data(bytesNoCopy: cipherBytes.baseAddress! + VERSION_PREFIX_LEN, count: ver.ARGON2ID_SALT_LEN, deallocator: .none)
-    }
-    // var salt = ciphertext.subdata(in: VERSION_PREFIX_LEN ..< VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN)
+    // var salt = ciphertext.withUnsafeMutableBytes { cipherBytes in
+    //     Data(bytesNoCopy: cipherBytes.baseAddress! + VERSION_PREFIX_LEN, count: ver.ARGON2ID_SALT_LEN, deallocator: .none)
+    // }
+    var salt = ciphertext.subdata(in: VERSION_PREFIX_LEN ..< VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN)
 
     var key = try deriveKey(password: &password, salt: &salt)
 
