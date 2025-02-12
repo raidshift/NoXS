@@ -1,23 +1,15 @@
 import argon2
-import Crypto
 import CryptoSwift
 import Foundation
 
-// let VERSION_ONE: UInt8 = UInt8(1)
-// let VERSION_X: UInt8 = 0x78
-
 let VERSION_PREFIX_LEN = 1
+let ARGON2ID_KEY_LEN = 32
+let CHACHAPOLY_TAG_LEN = 16
 
 let ARGON2ID_VERSION = 0x13
 let ARGON2ID_ITERATIONS = UInt8(2)
 let ARGON2ID_MEMORY_MB = UInt16(256)
 let ARGON2ID_PARALLELISM = UInt8(2)
-let ARGON2ID_KEY_LEN = 32
-// let ARGON2ID_SALT_LEN_VERSION_ONE = 16
-// let ARGON2ID_SALT_LEN_VERSION_X = 24
-
-// let CHACHAPOLY_NONCE_LEN_VERSION_ONE = 12
-let CHACHAPOLY_TAG_LEN = 16
 
 public enum NOXS_VER {
     case ONE
@@ -180,11 +172,7 @@ public func decrypt(password: inout Data, ciphertext: inout Data) throws -> Data
 
     if ciphertext.count < VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN { throw NOXS_ERR.FORMAT }
 
-    // var salt = ciphertext.withUnsafeMutableBytes { cipherBytes in
-    //     Data(bytesNoCopy: cipherBytes.baseAddress! + VERSION_PREFIX_LEN, count: ver.ARGON2ID_SALT_LEN, deallocator: .none)
-    // }
     var salt = ciphertext.subdata(in: VERSION_PREFIX_LEN ..< VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN)
-
     var key = try deriveKey(password: &password, salt: &salt)
 
     return try decrypt(key: &key, ciphertext: &ciphertext)
