@@ -19,8 +19,8 @@ public enum NOXS_VER {
 public extension NOXS_VER {
     var VERSION_BYTE: UInt8 {
         switch self {
-        case .ONE: return UInt8(1)
-        case .X: return 0x78
+        case .ONE: return UInt8(0x01)
+        case .X: return UInt8(0x78)
         }
     }
 
@@ -40,24 +40,26 @@ public extension NOXS_VER {
 }
 
 public enum NOXS_ERR: Error {
-    case FORMAT
-    case CORE_KDF
-    case CORE_CIPHER
+    case DATA
+    case ENCRYPT
+    case DECRYPT
 }
 
-let ENCRYPT_ERR_TEXT_FORMAT = "Invalid input data"
-let ENCRYPT_ERR_CORE_KDF = "Invoking key derivation function failed"
-let ENCRYPT_ERR_CORE_CIPHER = "Invoking cipher function failed"
+let NOXS_ERR_STR_DATA = "Invalid input data"
+let NOXS_ERR_STR_ENCRYPT: String = "Encryption failed"
+let NOXS_ERR_STR_DECRYPT: String = "Encryption failed"
 
 extension NOXS_ERR: LocalizedError {
     public var errorDescription: String? {
         switch self {
-        case .FORMAT:
-            return NSLocalizedString(ENCRYPT_ERR_TEXT_FORMAT, comment: ENCRYPT_ERR_TEXT_FORMAT)
-        case .CORE_KDF:
-            return NSLocalizedString(ENCRYPT_ERR_CORE_KDF, comment: ENCRYPT_ERR_CORE_KDF)
-        case .CORE_CIPHER:
-            return NSLocalizedString(ENCRYPT_ERR_CORE_CIPHER, comment: ENCRYPT_ERR_CORE_CIPHER)
+        case .DATA:
+            return NSLocalizedString(NOXS_ERR_STR_DATA, comment: NOXS_ERR_STR_DATA)
+
+        case .ENCRYPT:
+            return NSLocalizedString(NOXS_ERR_STR_ENCRYPT, comment: NOXS_ERR_STR_ENCRYPT)
+
+        case .DECRYPT:
+            return NSLocalizedString(NOXS_ERR_STR_DECRYPT, comment: NOXS_ERR_STR_DECRYPT)
         }
     }
 }
@@ -80,7 +82,7 @@ public func deriveKey(password: inout Data, salt: inout Data) throws -> Data {
                     0,
                     Argon2_id,
                     UInt32(ARGON2ID_VERSION)
-                ) != 0 { throw NOXS_ERR.CORE_KDF }
+                ) != 0 { throw NOXS_ERR.DATA }
             }
         }
     }
@@ -103,18 +105,22 @@ public func deriveKey(password: inout Data, ver: NOXS_VER) throws -> (key: Data,
 }
 
 public func encrypt(key: inout Data, salt: inout Data, plaintext: inout Data, ver: NOXS_VER) throws -> Data {
-    if key.count != ARGON2ID_KEY_LEN || salt.count != ver.ARGON2ID_SALT_LEN { throw NOXS_ERR.FORMAT }
+    if key.count != ARGON2ID_KEY_LEN || salt.count != ver.ARGON2ID_SALT_LEN { throw NOXS_ERR.DATA }
+
+    let iv = salt.subdata(in: ver.ARGON2ID_SALT_LEN - ver.CHACHAPOLY_NONCE_LEN ..< ver.ARGON2ID_SALT_LEN).bytes
 
     do {
-        let result = try AEADChaCha20Poly1305.encrypt(
-            plaintext.bytes,
-            key: key.bytes,
-            iv: salt.subdata(in: ver.ARGON2ID_SALT_LEN - ver.CHACHAPOLY_NONCE_LEN ..< ver.ARGON2ID_SALT_LEN).bytes,
-            authenticationHeader: []
-        )
+        let result: (cipherText: [UInt8], authenticationTag: [UInt8])
+
+        if ver == .ONE {
+            result = try AEADChaCha20Poly1305.encrypt(plaintext.bytes, key: key.bytes, iv: iv, authenticationHeader: [])
+        } else {
+            result = try AEADXChaCha20Poly1305.encrypt(plaintext.bytes, key: key.bytes, iv: iv, authenticationHeader: [])
+        }
+
         return Data([ver.VERSION_BYTE]) + salt + Data(result.cipherText) + Data(result.authenticationTag)
     } catch {
-        throw NOXS_ERR.CORE_CIPHER
+        throw NOXS_ERR.ENCRYPT
     }
 }
 
@@ -124,53 +130,52 @@ public func encrypt(password: inout Data, plaintext: inout Data, ver: NOXS_VER) 
 }
 
 public func decrypt(key: inout Data, ciphertext: inout Data) throws -> Data {
-    if key.count != ARGON2ID_KEY_LEN { throw NOXS_ERR.FORMAT }
+    if key.count != ARGON2ID_KEY_LEN { throw NOXS_ERR.DATA }
+    if ciphertext.count < 1 { throw NOXS_ERR.DATA }
+
+    let ver = switch ciphertext[0] {
+    case NOXS_VER.ONE.VERSION_BYTE: NOXS_VER.ONE
+    case NOXS_VER.X.VERSION_BYTE: NOXS_VER.X
+    default: throw NOXS_ERR.DECRYPT
+    }
+
+    if ciphertext.count < VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN { throw NOXS_ERR.DATA }
+
+    let iv = ciphertext.subdata(in: VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN - ver.CHACHAPOLY_NONCE_LEN ..< VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN).bytes
+    let tag = ciphertext.subdata(in: ciphertext.count - CHACHAPOLY_TAG_LEN ..< ciphertext.count).bytes
 
     do {
-        let v = ciphertext[0]
-
-        let ver = switch v {
-        case NOXS_VER.ONE.VERSION_BYTE: NOXS_VER.ONE
-        case NOXS_VER.X.VERSION_BYTE: NOXS_VER.X
-        default: throw NOXS_ERR.CORE_CIPHER
-        }
-
-        let iv = ciphertext.subdata(in: VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN - ver.CHACHAPOLY_NONCE_LEN ..< VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN).bytes
-        let tag = ciphertext.subdata(in: ciphertext.count - CHACHAPOLY_TAG_LEN ..< ciphertext.count).bytes
-
         let result = try ciphertext.withUnsafeMutableBytes { cipherBytes in
-            try AEADChaCha20Poly1305.decrypt(
-                Data(bytesNoCopy: cipherBytes.baseAddress! + VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN,
-                     count: cipherBytes.count - VERSION_PREFIX_LEN - ver.ARGON2ID_SALT_LEN - CHACHAPOLY_TAG_LEN,
-                     deallocator: .none).bytes,
-                key: key.bytes,
-                iv: iv,
-                authenticationHeader: [],
-                authenticationTag: tag
-            )
+            let c = Data(bytesNoCopy: cipherBytes.baseAddress! + VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN,
+                         count: cipherBytes.count - VERSION_PREFIX_LEN - ver.ARGON2ID_SALT_LEN - CHACHAPOLY_TAG_LEN,
+                         deallocator: .none).bytes
+
+            if ver == .ONE {
+                return try AEADChaCha20Poly1305.decrypt(c, key: key.bytes, iv: iv, authenticationHeader: [], authenticationTag: tag)
+            } else {
+                return try AEADXChaCha20Poly1305.decrypt(c, key: key.bytes, iv: iv, authenticationHeader: [], authenticationTag: tag)
+            }
         }
 
-        if !result.success { throw NOXS_ERR.CORE_CIPHER }
+        if !result.success { throw NOXS_ERR.DECRYPT }
 
         return Data(result.plainText)
 
     } catch {
-        throw NOXS_ERR.CORE_CIPHER
+        throw NOXS_ERR.DECRYPT
     }
 }
 
 public func decrypt(password: inout Data, ciphertext: inout Data) throws -> Data {
-    if ciphertext.count < 1 { throw NOXS_ERR.FORMAT }
+    if ciphertext.count < 1 { throw NOXS_ERR.DATA }
 
-    let v = ciphertext[0]
-
-    let ver = switch v {
+    let ver = switch ciphertext[0] {
     case NOXS_VER.ONE.VERSION_BYTE: NOXS_VER.ONE
     case NOXS_VER.X.VERSION_BYTE: NOXS_VER.X
-    default: throw NOXS_ERR.FORMAT
+    default: throw NOXS_ERR.DATA
     }
 
-    if ciphertext.count < VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN { throw NOXS_ERR.FORMAT }
+    if ciphertext.count < VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN + CHACHAPOLY_TAG_LEN { throw NOXS_ERR.DATA }
 
     var salt = ciphertext.subdata(in: VERSION_PREFIX_LEN ..< VERSION_PREFIX_LEN + ver.ARGON2ID_SALT_LEN)
     var key = try deriveKey(password: &password, salt: &salt)
