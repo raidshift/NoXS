@@ -83,9 +83,9 @@ do {
             if password != confirmPassword { exitWithError(STD_ERR_PASSWORD_NO_MATCH) }
         }
         if isBase64data {
-            try encrypt(password: &password, plaintext: &data).base64EncodedData().write(to: outURL)
+            try encrypt(password: &password, plaintext: &data,ver: .ONE).base64EncodedData().write(to: outURL)
         } else {
-            try encrypt(password: &password, plaintext: &data).write(to: outURL)
+            try encrypt(password: &password, plaintext: &data,ver: .ONE).write(to: outURL)
         }
 
     case COMMANDS[2]:

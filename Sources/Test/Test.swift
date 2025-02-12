@@ -52,7 +52,7 @@ class XTests: XCTestCase {
         var plaintext = Data(hex: plaintextHex)!
 
         do {
-            let ciphertext = try encrypt(key: &key, salt: &salt, plaintext: &plaintext)
+            let ciphertext = try encrypt(key: &key, salt: &salt, plaintext: &plaintext,ver: .ONE)
             XCTAssert(ciphertext.hexString == ciphertextHex)
 
         } catch {
@@ -61,8 +61,8 @@ class XTests: XCTestCase {
 
         do {
             plaintext = Data()
-            let ciphertext = try encrypt(password: &password, plaintext: &plaintext)
-            XCTAssert(ciphertext.count == VERSION_PREFIX_LEN + ARGON2ID_SALT_LEN + plaintext.count + CHACHAPOLY_TAG_LEN)
+            let ciphertext = try encrypt(password: &password, plaintext: &plaintext, ver: .ONE)
+            XCTAssert(ciphertext.count == VERSION_PREFIX_LEN + NOXS_VER.ONE.ARGON2ID_SALT_LEN + plaintext.count + CHACHAPOLY_TAG_LEN)
 
         } catch {
             XCTFail(error.localizedDescription)
