@@ -22,6 +22,7 @@ extension Data {
     }
 }
 
+// test V1
 let passwordHex = "b102a3049c060f"
 let keyHex = "ba49c1d86ab3b281e3cafe626e84274d6600504ec8bb072149b356ce1faea48b"
 let plaintextHex = "6de01091d749f189c4e25aa315b314aa"
@@ -31,6 +32,15 @@ let saltHex = "01020304" + nonceHex
 let encryptedHex = "91352cd42cf496937b700a902c01d9d4"
 let tagHex = "adcacd100c31dc5b2fa4c1f4575e684f"
 let ciphertextHex = versionHex + saltHex + encryptedHex + tagHex
+
+// text Vx
+let xKeyHex = "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+let xSaltHex = "404142434445464748494a4b4c4d4e4f5051525354555657"
+let xPlainHex = "12345678"
+let xEncryptedHex = "e338258c"
+let xVersionHex = "78"
+let xTagHex = "10628e0f11382a0cd1617e8ad35b3f33"
+let xCipherHex = xVersionHex + xSaltHex + xEncryptedHex + xTagHex
 
 class XTests: XCTestCase {
     func testKeyDerivation() {
@@ -52,7 +62,7 @@ class XTests: XCTestCase {
         var plaintext = Data(hex: plaintextHex)!
 
         do {
-            let ciphertext = try encrypt(key: &key, salt: &salt, plaintext: &plaintext,ver: .ONE)
+            let ciphertext = try encrypt(key: &key, salt: &salt, plaintext: &plaintext, ver: .ONE)
             XCTAssert(ciphertext.hexString == ciphertextHex)
 
         } catch {
@@ -64,6 +74,32 @@ class XTests: XCTestCase {
             let ciphertext = try encrypt(password: &password, plaintext: &plaintext, ver: .ONE)
             XCTAssert(ciphertext.count == VERSION_PREFIX_LEN + NOXS_VER.ONE.ARGON2ID_SALT_LEN + plaintext.count + CHACHAPOLY_TAG_LEN)
 
+        } catch {
+            XCTFail(error.localizedDescription)
+        }
+    }
+
+    func testEncryptX() {
+        var key = Data(hex: xKeyHex)!
+        var salt = Data(hex: xSaltHex)!
+        var plaintext = Data(hex: xPlainHex)!
+
+        do {
+            let ciphertext = try encrypt(key: &key, salt: &salt, plaintext: &plaintext, ver: .X)
+            XCTAssert(ciphertext.hexString == xCipherHex)
+        } catch {
+            XCTFail(error.localizedDescription)
+        }
+    }
+
+
+    func testDecryptX() {
+        var key = Data(hex: xKeyHex)!
+        var ciphertext = Data(hex: xCipherHex)!
+
+        do {
+            let plaintext = try decrypt(key: &key, ciphertext: &ciphertext)
+            XCTAssert(plaintext.hexString == xPlainHex)
         } catch {
             XCTFail(error.localizedDescription)
         }
