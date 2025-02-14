@@ -28,4 +28,4 @@
 * _da_ = base64-decode & decrypt
 
 ## Build with Rust and install to /usr/local/bin
-* rust_build_install
+* build_install
