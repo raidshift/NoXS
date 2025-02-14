@@ -1,8 +1,8 @@
 #!/bin/sh
 
-build=3
+build=0
 
 GPG_TTY=$(tty)
 export GPG_TTY
 
-git add . && git commit -S -m "build_$build" && git push
+git add . && git commit -S -m "1.2.$build" && git push

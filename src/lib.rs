@@ -1,11 +1,11 @@
-use std::{error::Error, fmt};
 use argon2_kdf::{Algorithm, Hasher};
 use chacha20poly1305::{
     aead::{Aead, KeyInit},
     ChaCha20Poly1305, Key, Nonce,
 };
-use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use rand_core::{RngCore, SeedableRng};
+use std::{error::Error, fmt};
 
 pub const VERSION_BYTES: [u8; 1] = [1];
 const ARGON2ID_ITERATIONS: u32 = 2;
@@ -50,7 +50,7 @@ fn derive_key(password: &[u8], salt: &[u8; ARGON2ID_SALT_LEN]) -> [u8; ARGON2ID_
 
 fn derive_key_with_salt(password: &[u8]) -> ([u8; ARGON2ID_KEY_LEN], [u8; ARGON2ID_SALT_LEN]) {
     let mut salt = [0u8; ARGON2ID_SALT_LEN];
-    ChaCha20Rng::from_entropy().fill_bytes(&mut salt);
+    ChaCha20Rng::from_os_rng().fill_bytes(&mut salt);
     let key = derive_key(password, &salt);
     (key, salt)
 }

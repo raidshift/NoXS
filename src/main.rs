@@ -9,7 +9,7 @@ use std::{
 const COMMANDS: [&str; 4] = ["ea", "e", "da", "d"];
 
 const STD_ERR_INFO: &str = "
-      od$$$$oo      NoXS V1.2.R (https://github.com/raidshift/noxs)
+      od$$$$oo      NoXS V1.2.0 (https://github.com/raidshift/noxs)
      $$*°  °?$$
     d$$      ?$b    Usage:
     d$b      d$b      noxs <cmd> <in_file> <out_file>
