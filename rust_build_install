@@ -1,5 +1,6 @@
 #!/bin/sh
 
+rm Cargo.lock
 rm -rf target
 cargo build --release
 sudo cp target/release/noxs /usr/local/bin/noxs
