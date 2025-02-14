@@ -1,6 +1,4 @@
 .DS_Store
-.build/
 .vscode/
 target/
-Package.resolved
 tmp/
