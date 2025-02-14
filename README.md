@@ -7,10 +7,10 @@
   * Input: password, secure random salt (16 bytes)
   * Output: key (32 bytes)
 
-## Authenticated encryption: ChaCha20-Poly1305
-  * Input: key (32 bytes), nonce (last 12 bytes from salt), plaintext (n bytes)
-  * Output: version 0x01 (1 byte) || salt (16 bytes) || ciphertext (n bytes) || authentication tag (16 bytes)
-    ![image](https://github.com/raidshift/NoXS/assets/51262620/4e364805-0950-4c28-be78-daacc41b88e8)
+## Authenticated encryption: XChaCha20-Poly1305
+  * Input: key (32 bytes), salt/nonce, plaintext (n bytes)
+  * Output: version 0x78 (1 byte) || salt/nonce (24 bytes) || ciphertext (n bytes) || authentication tag (16 bytes)
+    ![NoXS](https://github.com/user-attachments/assets/5325e558-85cc-42da-8e96-2eda66b8754c)
 
 ## Usage
  
@@ -28,7 +28,3 @@
 
 ## Build with Rust and install to /usr/local/bin
 * rust_build_install
-
-## OR build with Swift and install to /usr/local/bin
-* swift_build_install_macos
-* swift_build_install_linux
