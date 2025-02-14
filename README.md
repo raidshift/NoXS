@@ -4,12 +4,12 @@
   
 ## Key derivation: Argon2id
   * Parameters: iterations = 2, memory = 1024*256, parallelism = 2
-  * Input: password, secure random salt (16 bytes)
+  * Input: password, secure random salt/nonce (16 bytes)
   * Output: key (32 bytes)
 
 ## Authenticated encryption: XChaCha20-Poly1305
-  * Input: key (32 bytes), salt/nonce, plaintext (n bytes)
-  * Output: version 0x78 (1 byte) || salt/nonce (24 bytes) || ciphertext (n bytes) || authentication tag (16 bytes)
+  * Input: key (32 bytes), secure random salt/nonce (16 bytes), plaintext (n bytes)
+  * Output: version 0x78 (1 byte) || salt (24 bytes) || ciphertext (n bytes) || authentication tag (16 bytes)
 
 ![NoXS](https://github.com/user-attachments/assets/5325e558-85cc-42da-8e96-2eda66b8754c)
 
