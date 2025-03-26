@@ -1,6 +1,6 @@
 #!/bin/sh
 
-build=0
+build=1
 
 GPG_TTY=$(tty)
 export GPG_TTY

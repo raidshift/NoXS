@@ -5,11 +5,12 @@ use std::{
     fs::{self, File},
     io::{self, IoSlice, Write},
 };
+use zeroize::Zeroize;
 
 const COMMANDS: [&str; 4] = ["ea", "e", "da", "d"];
 
 const STD_ERR_INFO: &str = "
-      od$$$$oo      NoXS V1.2.0 (https://github.com/raidshift/noxs)
+      od$$$$oo      NoXS V1.2.1 (https://github.com/raidshift/noxs)
      $$*°  °?$$
     d$$      ?$b    Usage:
     d$b      d$b      noxs <cmd> <in_file> <out_file>
@@ -95,13 +96,14 @@ fn main() {
 
     match args[1].as_str() {
         "e" | "ea" => {
-            let confirm_password;
+            let mut confirm_password;
             if !password_from_file {
                 password = query_password(STD_OUT_ENTER_PASSWORD);
                 confirm_password = query_password(STD_OUT_CONFIRM_PASSWORD);
                 if password != confirm_password {
                     exit_with_error(STD_ERR_PASSWORD_NO_MATCH);
                 }
+                confirm_password.zeroize();
             }
 
             encrypt_x_with_password(&password, &in_data)
@@ -125,6 +127,7 @@ fn main() {
                     }
                 })
                 .unwrap_or_else(|e| exit_with_error(&e.to_string()));
+            in_data.zeroize();
         }
 
         "d" | "da" => {
@@ -170,4 +173,7 @@ fn main() {
         }
         _ => {}
     }
+
+    password.zeroize();
+    password_from_file.zeroize();
 }
