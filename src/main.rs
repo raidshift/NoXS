@@ -10,7 +10,7 @@ use zeroize::Zeroize;
 const COMMANDS: [&str; 4] = ["ea", "e", "da", "d"];
 
 const STD_ERR_INFO: &str = "
-      od$$$$oo      NoXS V1.2.1 (https://github.com/raidshift/noxs)
+      od$$$$oo      NoXS V1.2.2 (https://github.com/raidshift/noxs)
      $$*°  °?$$
     d$$      ?$b    Usage:
     d$b      d$b      noxs <cmd> <in_file> <out_file>
@@ -106,11 +106,11 @@ fn main() {
                 confirm_password.zeroize();
             }
 
-            encrypt_x_with_password(&password, &in_data)
+            encrypt_with_password(&password, &in_data)
                 .map(|(salt, ciphertext)| {
                     if is_base64data {
                         let mut combined = Vec::new();
-                        combined.extend_from_slice(&[VERSION_X_BYTE]);
+                        combined.extend_from_slice(&[VERSION_BYTE]);
                         combined.extend_from_slice(&salt);
                         combined.extend_from_slice(&ciphertext);
 
@@ -119,7 +119,7 @@ fn main() {
                         write_io_slices_to_file(
                             out_path,
                             &[
-                                IoSlice::new(&[VERSION_X_BYTE]),
+                                IoSlice::new(&[VERSION_BYTE]),
                                 IoSlice::new(&salt),
                                 IoSlice::new(&ciphertext),
                             ],
@@ -140,36 +140,22 @@ fn main() {
                     .unwrap_or_else(|_| exit_with_error(STD_ERR_NOT_BASE64));
             }
 
-            let ver = in_data
+            in_data
                 .get(..1)
-                .filter(|&v| v == [VERSION_ONE_BYTE] || v == [VERSION_X_BYTE])
+                .filter(|&v| v == [VERSION_BYTE])
                 .unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
 
-            if ver == [VERSION_ONE_BYTE] {
-                let salt = in_data
-                    .get(1..1 + ARGON2ID_SALT_LEN)
-                    .unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
-                let ciphertext = in_data
-                    .get(1 + ARGON2ID_SALT_LEN..)
-                    .filter(|slice| slice.len() >= CHACHAPOLY_TAG_LEN)
-                    .unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
+            let salt = in_data
+                .get(1..1 + ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN)
+                .unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
+            let ciphertext = in_data
+                .get(1 + ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN..)
+                .filter(|slice| slice.len() >= XCHACHAPOLY_TAG_LEN)
+                .unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
 
-                decrypt_with_password(&password, salt.try_into().unwrap(), ciphertext)
-                    .map(|plaintext| write_data_to_file(&out_path, &plaintext))
-                    .unwrap_or_else(|e| exit_with_error(&e.to_string()));
-            } else {
-                let salt = in_data
-                    .get(1..1 + ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN)
-                    .unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
-                let ciphertext = in_data
-                    .get(1 + ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN..)
-                    .filter(|slice| slice.len() >= CHACHAPOLY_TAG_LEN)
-                    .unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
-
-                decrypt_x_with_password(&password, salt.try_into().unwrap(), ciphertext)
-                    .map(|plaintext| write_data_to_file(&out_path, &plaintext))
-                    .unwrap_or_else(|e| exit_with_error(&e.to_string()));
-            }
+            decrypt_with_password(&password, salt.try_into().unwrap(), ciphertext)
+                .map(|plaintext| write_data_to_file(&out_path, &plaintext))
+                .unwrap_or_else(|e| exit_with_error(&e.to_string()));
         }
         _ => {}
     }
