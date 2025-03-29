@@ -1,4 +1,5 @@
 use base64::prelude::*;
+use chacha20poly1305::Error;
 use noxs::*;
 use std::{
     env,
@@ -84,7 +85,7 @@ fn run(
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 4 || args.len() > 5 || !COMMANDS.contains(&args[1].as_str()) {
-        Err(STD_ERR_INFO);
+        std:Error(STD_ERR_INFO.into());
     }
 
     let in_path = &args[2];
