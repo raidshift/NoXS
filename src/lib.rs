@@ -20,6 +20,7 @@ pub const XCHACHAPOLY_TAG_LEN: usize = 16;
 pub enum CipherError {
     DecryptionFailed,
     EncryptionFailed,
+    RndNumGenFailed,
 }
 
 impl Error for CipherError {}
@@ -29,6 +30,7 @@ impl fmt::Display for CipherError {
         match self {
             CipherError::DecryptionFailed => write!(f, "Decryption failed"),
             CipherError::EncryptionFailed => write!(f, "Encryption failed"),
+            CipherError::RndNumGenFailed => write!(f, "Random number generation failed"),
         }
     }
 }
@@ -62,11 +64,13 @@ pub fn encrypt_with_password(
     password: &[u8],
     plaintext: &[u8],
 ) -> Result<([u8; ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN], Vec<u8>), CipherError> {
+    let mut rng = ChaCha20Rng::try_from_os_rng().map_err(|_| CipherError::RndNumGenFailed)?;
     let mut salt = [0u8; ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN];
-    ChaCha20Rng::from_os_rng().fill_bytes(&mut salt);
+    rng.fill_bytes(&mut salt);
     let mut key = derive_key(password, &salt);
-    let encrypted = encrypt(&key, &salt, plaintext)?;
+    let result = encrypt(&key, &salt, plaintext);
     key.zeroize();
+    let encrypted = result?;
     Ok((salt, encrypted))
 }
 
