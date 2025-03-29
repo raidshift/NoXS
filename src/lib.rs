@@ -85,8 +85,7 @@ pub fn encrypt_with_password(
     let mut key = derive_key(password, &salt)?;
     let result = encrypt(&key, &salt, plaintext);
     key.zeroize();
-    let encrypted = result?;
-    Ok((salt, encrypted))
+    Ok((salt, result?))
 }
 
 fn decrypt(

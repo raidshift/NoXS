@@ -59,13 +59,13 @@ fn query_password(prompt: &str) -> Vec<u8> {
 fn main() -> ExitCode {
     let mut password: Vec<u8> = Vec::new();
     let mut password_confirm: Vec<u8> = Vec::new();
-    let mut in_data: Vec<u8> = Vec::new();
+    let mut cipher_data: Vec<u8> = Vec::new();
 
-    let result = run(&mut password, &mut password_confirm, &mut in_data);
+    let result = run(&mut password, &mut password_confirm, &mut cipher_data);
 
     password.zeroize();
     password_confirm.zeroize();
-    in_data.zeroize();
+    cipher_data.zeroize();
 
     match result {
         Ok(_) => ExitCode::SUCCESS,
@@ -79,7 +79,7 @@ fn main() -> ExitCode {
 fn run(
     password: &mut Vec<u8>,
     passworm_confirm: &mut Vec<u8>,
-    in_data: &mut Vec<u8>,
+    cipher_data: &mut Vec<u8>,
 ) -> std::result::Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
 
@@ -105,7 +105,7 @@ fn run(
         is_password_from_file = true;
     }
 
-    *in_data = fs::read(in_path)?;
+    *cipher_data = fs::read(in_path)?;
     let is_base64data;
 
     is_base64data = matches!(args[1].as_str(), "ea" | "da");
@@ -120,7 +120,7 @@ fn run(
                 }
             }
 
-            let (salt, ciphertext) = encrypt_with_password(&password, &in_data)?;
+            let (salt, ciphertext) = encrypt_with_password(&password, &cipher_data)?;
             let mut file = File::create(out_path)?;
 
             match is_base64data {
@@ -146,29 +146,27 @@ fn run(
                 *password = query_password(STD_OUT_ENTER_PASSWORD);
             }
             if is_base64data {
-                *in_data = BASE64_STANDARD
-                    .decode(&*in_data)
+                *cipher_data = BASE64_STANDARD
+                    .decode(&*cipher_data)
                     .map_err(|_| STD_ERR_NOT_BASE64)?;
             }
 
-            in_data
+            cipher_data
                 .get(..1)
                 .filter(|&v| v == [VERSION_BYTE])
                 .ok_or(STD_ERR_INVALID_CIPHER)?;
 
-            let salt = in_data
+            let salt = cipher_data
                 .get(1..1 + ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN)
                 .ok_or(STD_ERR_INVALID_CIPHER)?;
-            let ciphertext = in_data
+            let ciphertext = cipher_data
                 .get(1 + ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN..)
                 .filter(|slice| slice.len() >= XCHACHAPOLY_TAG_LEN)
                 .ok_or(STD_ERR_INVALID_CIPHER)?;
 
-            let mut plaintext =
-                decrypt_with_password(&password, salt.try_into().unwrap(), ciphertext)?;
+            *cipher_data = decrypt_with_password(&password, salt.try_into().unwrap(), ciphertext)?;
             let mut file = File::create(out_path)?;
-            file.write(&plaintext)?;
-            plaintext.zeroize();
+            file.write(&cipher_data)?;
         }
         _ => {}
     }
