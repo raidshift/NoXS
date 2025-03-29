@@ -48,10 +48,9 @@ fn derive_key(password: &[u8], salt: &[u8]) -> Result<[u8; ARGON2ID_KEY_LEN], Ci
         .hash(password)
         .map_err(|_| CipherError::DeriveKey)?;
 
-    let key: [u8; ARGON2ID_KEY_LEN] = hash
+    let key: Result<[u8; ARGON2ID_KEY_LEN],CipherError> = hash
         .as_bytes()
-        .try_into()
-        .map_err(|_| CipherError::DeriveKey)?;
+        .try_into().map_err(|_| CipherError::DeriveKey);
 
     let ptr = hash.as_bytes().as_ptr() as *mut u8;
     let len = hash.as_bytes().len();
@@ -61,8 +60,8 @@ fn derive_key(password: &[u8], salt: &[u8]) -> Result<[u8; ARGON2ID_KEY_LEN], Ci
             ptr::write_volatile(ptr.add(i), 0);
         }
     }
-
-    Ok(key)
+    
+    key
 }
 
 fn encrypt(
