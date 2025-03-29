@@ -5,7 +5,7 @@ use chacha20poly1305::{
 };
 use rand_chacha::ChaCha20Rng;
 use rand_core::{RngCore, SeedableRng};
-use std::{error::Error, fmt};
+use std::{error::Error, fmt, ptr};
 use zeroize::Zeroize;
 
 pub const VERSION_BYTE: u8 = 0x78;
@@ -18,9 +18,10 @@ pub const XCHACHAPOLY_TAG_LEN: usize = 16;
 
 #[derive(Debug)]
 pub enum CipherError {
-    DecryptionFailed,
-    EncryptionFailed,
-    RndNumGenFailed,
+    Decrypt,
+    Encrypt,
+    Rng,
+    DeriveKey,
 }
 
 impl Error for CipherError {}
@@ -28,15 +29,16 @@ impl Error for CipherError {}
 impl fmt::Display for CipherError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            CipherError::DecryptionFailed => write!(f, "Decryption failed"),
-            CipherError::EncryptionFailed => write!(f, "Encryption failed"),
-            CipherError::RndNumGenFailed => write!(f, "Random number generation failed"),
+            CipherError::Decrypt => write!(f, "Decryption failed"),
+            CipherError::Encrypt => write!(f, "Encryption failed"),
+            CipherError::Rng => write!(f, "Random number generation failed"),
+            CipherError::DeriveKey => write!(f, "Key derivation failed"),
         }
     }
 }
 
-fn derive_key(password: &[u8], salt: &[u8]) -> [u8; ARGON2ID_KEY_LEN] {
-    Hasher::new()
+fn derive_key(password: &[u8], salt: &[u8]) -> Result<[u8; ARGON2ID_KEY_LEN], CipherError> {
+    let hash = Hasher::new()
         .algorithm(Algorithm::Argon2id)
         .custom_salt(salt)
         .hash_length(ARGON2ID_KEY_LEN.try_into().unwrap())
@@ -44,10 +46,23 @@ fn derive_key(password: &[u8], salt: &[u8]) -> [u8; ARGON2ID_KEY_LEN] {
         .memory_cost_kib(ARGON2ID_MEMORY_MB * 1024)
         .threads(ARGON2ID_PARALLELISM)
         .hash(password)
-        .unwrap()
+        .map_err(|_| CipherError::DeriveKey)?;
+
+    let key: [u8; ARGON2ID_KEY_LEN] = hash
         .as_bytes()
         .try_into()
-        .unwrap()
+        .map_err(|_| CipherError::DeriveKey)?;
+
+    let ptr = hash.as_bytes().as_ptr() as *mut u8;
+    let len = hash.as_bytes().len();
+
+    unsafe {
+        for i in 0..len {
+            ptr::write_volatile(ptr.add(i), 0);
+        }
+    }
+
+    Ok(key)
 }
 
 fn encrypt(
@@ -57,17 +72,17 @@ fn encrypt(
 ) -> Result<Vec<u8>, CipherError> {
     XChaCha20Poly1305::new(Key::from_slice(key))
         .encrypt(salt.into(), plaintext)
-        .map_err(|_| CipherError::EncryptionFailed)
+        .map_err(|_| CipherError::Encrypt)
 }
 
 pub fn encrypt_with_password(
     password: &[u8],
     plaintext: &[u8],
 ) -> Result<([u8; ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN], Vec<u8>), CipherError> {
-    let mut rng = ChaCha20Rng::try_from_os_rng().map_err(|_| CipherError::RndNumGenFailed)?;
+    let mut rng = ChaCha20Rng::try_from_os_rng().map_err(|_| CipherError::Rng)?;
     let mut salt = [0u8; ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN];
     rng.fill_bytes(&mut salt);
-    let mut key = derive_key(password, &salt);
+    let mut key = derive_key(password, &salt)?;
     let result = encrypt(&key, &salt, plaintext);
     key.zeroize();
     let encrypted = result?;
@@ -81,7 +96,7 @@ fn decrypt(
 ) -> Result<Vec<u8>, CipherError> {
     XChaCha20Poly1305::new(Key::from_slice(key))
         .decrypt(XNonce::from_slice(nonce), ciphertext)
-        .map_err(|_| CipherError::DecryptionFailed)
+        .map_err(|_| CipherError::Decrypt)
 }
 
 pub fn decrypt_with_password(
@@ -89,7 +104,7 @@ pub fn decrypt_with_password(
     salt: &[u8; ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN],
     ciphertext: &[u8],
 ) -> Result<Vec<u8>, CipherError> {
-    let mut key = derive_key(password, salt);
+    let mut key = derive_key(password, salt)?;
     let decrypted = decrypt(&key, salt, ciphertext);
     key.zeroize();
     decrypted
@@ -111,7 +126,7 @@ mod tests {
     fn kdf() {
         let password = hex::decode(PASSWORD_HEX).unwrap();
         let salt = hex::decode(SALT_HEX).unwrap();
-        let key = derive_key(&password, &salt);
+        let key = derive_key(&password, &salt).unwrap();
         assert_eq!(hex::encode(key), KEY_HEX);
     }
 
