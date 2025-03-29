@@ -4,6 +4,7 @@ use std::{
     env,
     fs::{self, File},
     io::{self, IoSlice, Write},
+    process::ExitCode,
 };
 use zeroize::Zeroize;
 
@@ -22,7 +23,7 @@ const STD_ERR_INFO: &str = "
   ?$$$$$$$$$$$$$$$    d = decrypt  |  da = base64-decode & decrypt
 ";
 
-const STD_ERR_FILE_NOT_FOUND: &str = "File not found";
+// const STD_ERR_FILE_NOT_FOUND: &str = "File not found";
 const STD_ERR_PASSWORD_NO_MATCH: &str = "Passwords do not match";
 const STD_ERR_EQUAL_OUT_IN: &str = "<out_file> must not be <in_file>";
 const STD_ERR_EQUAL_PASSWD_IN_OUT: &str = "<passwd_file> must not be <in_file> or <out_file>";
@@ -31,132 +32,145 @@ const STD_OUT_CONFIRM_PASSWORD: &str = "Confirm password:";
 const STD_ERR_NOT_BASE64: &str = "Input data is not base64 encoded";
 const STD_ERR_INVALID_CIPHER: &str = "Invalid cipher";
 
-fn exit_with_error(out: &str) -> ! {
-    eprintln!("{}", out);
-    std::process::exit(1);
-}
+// fn exit_with_error(out: &str) -> ! {
+//     eprintln!("{}", out);
+//     std::process::exit(1);
+// }
 
-fn read_data_from_file(path: &str) -> Vec<u8> {
-    fs::read(path).unwrap_or_else(|e| {
-        exit_with_error(&match e.kind() {
-            io::ErrorKind::NotFound => format!("{} ({})", STD_ERR_FILE_NOT_FOUND, path),
-            _ => e.to_string(),
-        })
-    })
-}
+// fn read_data_from_file(path: &str) -> io::Result<Vec<u8>> {
+//     fs::read(path)
+// }
 
-fn write_io_slices_to_file(path: &str, io_slices: &[IoSlice]) {
-    let mut file = File::create(path).unwrap_or_else(|e| exit_with_error(&e.to_string()));
+// fn write_io_slices_to_file(path: &str, io_slices: &[IoSlice]) -> io::Result<()> {
+//     File::create(path)?.write_vectored(io_slices);
+//     Ok(())
+// }
 
-    file.write_vectored(io_slices)
-        .unwrap_or_else(|e| exit_with_error(&e.to_string()));
-}
-
-fn write_data_to_file(path: &str, data: &[u8]) {
-    fs::write(path, data).unwrap_or_else(|e| exit_with_error(&e.to_string()));
-}
+// fn write_data_to_file(path: &str, data: &[u8]) -> io::Result<()> {
+//     fs::write(path, data)
+// }
 
 fn query_password(prompt: &str) -> Vec<u8> {
     print!("{}", prompt);
     io::stdout().flush().unwrap();
     rpassword::read_password().unwrap().into_bytes()
 }
-fn main() {
+
+fn main() -> ExitCode {
+    let mut password: Vec<u8> = Vec::new();
+    let mut password_confirm: Vec<u8> = Vec::new();
+    let mut in_data: Vec<u8> = Vec::new();
+
+    let result = run(&mut password, &mut password_confirm, &mut in_data);
+
+    password.zeroize();
+    password_confirm.zeroize();
+    in_data.zeroize();
+
+    match result {
+        Ok(_) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("{}", e);
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run(
+    password: &mut Vec<u8>,
+    passworm_confirm: &mut Vec<u8>,
+    in_data: &mut Vec<u8>,
+) -> std::result::Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 4 || args.len() > 5 || !COMMANDS.contains(&args[1].as_str()) {
-        exit_with_error(STD_ERR_INFO);
+        Err(STD_ERR_INFO);
     }
 
     let in_path = &args[2];
     let out_path = &args[3];
 
     if in_path == out_path {
-        exit_with_error(STD_ERR_EQUAL_OUT_IN);
+        Err(STD_ERR_EQUAL_OUT_IN);
     }
 
-    let mut password = Vec::new();
     let mut is_password_from_file = false;
 
     if args.len() == 5 {
         let passwd_path = &args[4];
         if passwd_path == in_path || passwd_path == out_path {
-            exit_with_error(STD_ERR_EQUAL_PASSWD_IN_OUT);
+            Err(STD_ERR_EQUAL_PASSWD_IN_OUT);
         }
-        password = read_data_from_file(passwd_path);
+        password = &mut fs::read(passwd_path)?;
         is_password_from_file = true;
     }
 
-    let mut in_data = read_data_from_file(in_path);
+    in_data = &mut fs::read(in_path)?;
     let is_base64data;
 
     is_base64data = matches!(args[1].as_str(), "ea" | "da");
 
     match args[1].as_str() {
         "e" | "ea" => {
-            let mut confirm_password;
             if !is_password_from_file {
-                password = query_password(STD_OUT_ENTER_PASSWORD);
-                confirm_password = query_password(STD_OUT_CONFIRM_PASSWORD);
-                if password != confirm_password {
-                    exit_with_error(STD_ERR_PASSWORD_NO_MATCH);
+                password = &mut query_password(STD_OUT_ENTER_PASSWORD);
+                passworm_confirm = &mut query_password(STD_OUT_CONFIRM_PASSWORD);
+                if password != passworm_confirm {
+                    Err(STD_ERR_PASSWORD_NO_MATCH);
                 }
-                confirm_password.zeroize();
             }
 
-            encrypt_with_password(&password, &in_data)
-                .map(|(salt, ciphertext)| {
-                    if is_base64data {
-                        let mut combined = Vec::new();
-                        combined.extend_from_slice(&[VERSION_BYTE]);
-                        combined.extend_from_slice(&salt);
-                        combined.extend_from_slice(&ciphertext);
+            let (salt, ciphertext) = encrypt_with_password(&password, &in_data)?;
+            let mut file = File::create(out_path)?;
 
-                        write_data_to_file(out_path, BASE64_STANDARD.encode(combined).as_bytes())
-                    } else {
-                        write_io_slices_to_file(
-                            out_path,
-                            &[
-                                IoSlice::new(&[VERSION_BYTE]),
-                                IoSlice::new(&salt),
-                                IoSlice::new(&ciphertext),
-                            ],
-                        )
-                    }
-                })
-                .unwrap_or_else(|e| exit_with_error(&e.to_string()));
-            in_data.zeroize();
+            match is_base64data {
+                true => {
+                    let mut combined = Vec::new();
+                    combined.extend_from_slice(&[VERSION_BYTE]);
+                    combined.extend_from_slice(&salt);
+                    combined.extend_from_slice(&ciphertext);
+                    file.write(BASE64_STANDARD.encode(combined).as_bytes());
+                }
+                false => {
+                    file.write_vectored(&[
+                        IoSlice::new(&[VERSION_BYTE]),
+                        IoSlice::new(&salt),
+                        IoSlice::new(&ciphertext),
+                    ]);
+                }
+            }
         }
 
         "d" | "da" => {
             if !is_password_from_file {
-                password = query_password(STD_OUT_ENTER_PASSWORD);
+                password = &mut query_password(STD_OUT_ENTER_PASSWORD);
             }
             if is_base64data {
-                in_data = BASE64_STANDARD
+                in_data = &mut BASE64_STANDARD
                     .decode(in_data)
-                    .unwrap_or_else(|_| exit_with_error(STD_ERR_NOT_BASE64));
+                    .map_err(|_| STD_ERR_NOT_BASE64)?;
             }
 
             in_data
                 .get(..1)
                 .filter(|&v| v == [VERSION_BYTE])
-                .unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
+                .ok_or(STD_ERR_INVALID_CIPHER)?;
 
             let salt = in_data
                 .get(1..1 + ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN)
-                .unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
+                .ok_or(STD_ERR_INVALID_CIPHER)?;
             let ciphertext = in_data
                 .get(1 + ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN..)
                 .filter(|slice| slice.len() >= XCHACHAPOLY_TAG_LEN)
-                .unwrap_or_else(|| exit_with_error(STD_ERR_INVALID_CIPHER));
+                .ok_or(STD_ERR_INVALID_CIPHER)?;
 
-            decrypt_with_password(&password, salt.try_into().unwrap(), ciphertext)
-                .map(|plaintext| write_data_to_file(&out_path, &plaintext))
-                .unwrap_or_else(|e| exit_with_error(&e.to_string()));
+            let mut plaintext = decrypt_with_password(&password, salt.try_into().unwrap(), ciphertext)?;
+            let mut file = File::create(out_path)?;
+            file.write(&plaintext);
+            plaintext.zeroize();
         }
         _ => {}
     }
 
-    password.zeroize();
+    Ok(())
 }
