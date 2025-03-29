@@ -129,14 +129,14 @@ fn run(
                     combined.extend_from_slice(&[VERSION_BYTE]);
                     combined.extend_from_slice(&salt);
                     combined.extend_from_slice(&ciphertext);
-                    file.write(BASE64_STANDARD.encode(combined).as_bytes());
+                    file.write(BASE64_STANDARD.encode(combined).as_bytes())?;
                 }
                 false => {
                     file.write_vectored(&[
                         IoSlice::new(&[VERSION_BYTE]),
                         IoSlice::new(&salt),
                         IoSlice::new(&ciphertext),
-                    ]);
+                    ])?;
                 }
             }
         }
@@ -167,7 +167,7 @@ fn run(
             let mut plaintext =
                 decrypt_with_password(&password, salt.try_into().unwrap(), ciphertext)?;
             let mut file = File::create(out_path)?;
-            file.write(&plaintext);
+            file.write(&plaintext)?;
             plaintext.zeroize();
         }
         _ => {}
