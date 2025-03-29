@@ -1,5 +1,4 @@
 use base64::prelude::*;
-use chacha20poly1305::Error;
 use noxs::*;
 use std::{
     env,
@@ -85,14 +84,14 @@ fn run(
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 4 || args.len() > 5 || !COMMANDS.contains(&args[1].as_str()) {
-        std:Error(STD_ERR_INFO.into());
+        return Err(STD_ERR_INFO.into());
     }
 
     let in_path = &args[2];
     let out_path = &args[3];
 
     if in_path == out_path {
-        Err(STD_ERR_EQUAL_OUT_IN);
+        return Err(STD_ERR_EQUAL_OUT_IN.into());
     }
 
     let mut is_password_from_file = false;
@@ -100,13 +99,13 @@ fn run(
     if args.len() == 5 {
         let passwd_path = &args[4];
         if passwd_path == in_path || passwd_path == out_path {
-            Err(STD_ERR_EQUAL_PASSWD_IN_OUT);
+            return Err(STD_ERR_EQUAL_PASSWD_IN_OUT.into());
         }
-        password = &mut fs::read(passwd_path)?;
+        *password = fs::read(passwd_path)?;
         is_password_from_file = true;
     }
 
-    in_data = &mut fs::read(in_path)?;
+    *in_data = fs::read(in_path)?;
     let is_base64data;
 
     is_base64data = matches!(args[1].as_str(), "ea" | "da");
@@ -114,10 +113,10 @@ fn run(
     match args[1].as_str() {
         "e" | "ea" => {
             if !is_password_from_file {
-                password = &mut query_password(STD_OUT_ENTER_PASSWORD);
-                passworm_confirm = &mut query_password(STD_OUT_CONFIRM_PASSWORD);
+                *password = query_password(STD_OUT_ENTER_PASSWORD);
+                *passworm_confirm = query_password(STD_OUT_CONFIRM_PASSWORD);
                 if password != passworm_confirm {
-                    Err(STD_ERR_PASSWORD_NO_MATCH);
+                    return Err(STD_ERR_PASSWORD_NO_MATCH.into());
                 }
             }
 
@@ -144,11 +143,11 @@ fn run(
 
         "d" | "da" => {
             if !is_password_from_file {
-                password = &mut query_password(STD_OUT_ENTER_PASSWORD);
+                *password = query_password(STD_OUT_ENTER_PASSWORD);
             }
             if is_base64data {
-                in_data = &mut BASE64_STANDARD
-                    .decode(in_data)
+                *in_data = BASE64_STANDARD
+                    .decode(&*in_data)
                     .map_err(|_| STD_ERR_NOT_BASE64)?;
             }
 
@@ -165,7 +164,8 @@ fn run(
                 .filter(|slice| slice.len() >= XCHACHAPOLY_TAG_LEN)
                 .ok_or(STD_ERR_INVALID_CIPHER)?;
 
-            let mut plaintext = decrypt_with_password(&password, salt.try_into().unwrap(), ciphertext)?;
+            let mut plaintext =
+                decrypt_with_password(&password, salt.try_into().unwrap(), ciphertext)?;
             let mut file = File::create(out_path)?;
             file.write(&plaintext);
             plaintext.zeroize();
