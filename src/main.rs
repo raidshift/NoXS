@@ -10,7 +10,7 @@ use zeroize::Zeroize;
 const COMMANDS: [&str; 4] = ["ea", "e", "da", "d"];
 
 const STD_ERR_INFO: &str = "
-      od$$$$oo      NoXS V1.2.2 (https://github.com/raidshift/noxs)
+      od$$$$oo      NoXS V1.2.3 (https://github.com/raidshift/noxs)
      $$*°  °?$$
     d$$      ?$b    Usage:
     d$b      d$b      noxs <cmd> <in_file> <out_file>
@@ -59,10 +59,8 @@ fn write_data_to_file(path: &str, data: &[u8]) {
 fn query_password(prompt: &str) -> Vec<u8> {
     print!("{}", prompt);
     io::stdout().flush().unwrap();
-    let password = rpassword::read_password().unwrap();
-    password.into_bytes()
+    rpassword::read_password().unwrap().into_bytes()
 }
-
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -78,7 +76,7 @@ fn main() {
     }
 
     let mut password = Vec::new();
-    let mut password_from_file = false;
+    let mut is_password_from_file = false;
 
     if args.len() == 5 {
         let passwd_path = &args[4];
@@ -86,7 +84,7 @@ fn main() {
             exit_with_error(STD_ERR_EQUAL_PASSWD_IN_OUT);
         }
         password = read_data_from_file(passwd_path);
-        password_from_file = true;
+        is_password_from_file = true;
     }
 
     let mut in_data = read_data_from_file(in_path);
@@ -97,7 +95,7 @@ fn main() {
     match args[1].as_str() {
         "e" | "ea" => {
             let mut confirm_password;
-            if !password_from_file {
+            if !is_password_from_file {
                 password = query_password(STD_OUT_ENTER_PASSWORD);
                 confirm_password = query_password(STD_OUT_CONFIRM_PASSWORD);
                 if password != confirm_password {
@@ -131,7 +129,7 @@ fn main() {
         }
 
         "d" | "da" => {
-            if !password_from_file {
+            if !is_password_from_file {
                 password = query_password(STD_OUT_ENTER_PASSWORD);
             }
             if is_base64data {
@@ -161,5 +159,4 @@ fn main() {
     }
 
     password.zeroize();
-    password_from_file.zeroize();
 }

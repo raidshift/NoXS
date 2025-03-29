@@ -6,6 +6,7 @@ use chacha20poly1305::{
 use rand_chacha::ChaCha20Rng;
 use rand_core::{RngCore, SeedableRng};
 use std::{error::Error, fmt};
+use zeroize::Zeroize;
 
 pub const VERSION_BYTE: u8 = 0x78;
 const ARGON2ID_ITERATIONS: u32 = 2;
@@ -63,8 +64,10 @@ pub fn encrypt_with_password(
 ) -> Result<([u8; ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN], Vec<u8>), CipherError> {
     let mut salt = [0u8; ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN];
     ChaCha20Rng::from_os_rng().fill_bytes(&mut salt);
-    let key = derive_key(password, &salt);
-    Ok((salt, encrypt(&key, &salt, plaintext)?))
+    let mut key = derive_key(password, &salt);
+    let encrypted = encrypt(&key, &salt, plaintext)?;
+    key.zeroize();
+    Ok((salt, encrypted))
 }
 
 fn decrypt(
@@ -82,7 +85,10 @@ pub fn decrypt_with_password(
     salt: &[u8; ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN],
     ciphertext: &[u8],
 ) -> Result<Vec<u8>, CipherError> {
-    decrypt(&derive_key(password, salt), salt, ciphertext)
+    let mut key = derive_key(password, salt);
+    let decrypted = decrypt(&key, salt, ciphertext);
+    key.zeroize();
+    decrypted
 }
 
 #[cfg(test)]
