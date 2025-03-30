@@ -113,7 +113,6 @@ fn run(
     let is_base64data = matches!(command, Command::EncryptBase64 | Command::DecryptBase64);
 
     match command {
-
         Command::Encrypt | Command::EncryptBase64 => {
             if !is_password_from_file {
                 *password = prompt_password(STD_OUT_ENTER_PASSWORD);
