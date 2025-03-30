@@ -62,6 +62,8 @@ fn derive_key(password: &[u8], salt: &[u8]) -> Result<[u8; ARGON2ID_KEY_LEN], Ci
         }
     }
 
+    println!("key = {:?}",key);
+
     key
 }
 
