@@ -32,7 +32,6 @@ const STD_ERR_INVALID_CIPHER: &str = "Invalid cipher";
 const STD_OUT_ENTER_PASSWORD: &str = "Enter password:";
 const STD_OUT_CONFIRM_PASSWORD: &str = "Confirm password:";
 
-// #[derive(Debug, PartialEq)]
 enum Command {
     Encrypt,
     EncryptBase64,
@@ -114,6 +113,7 @@ fn run(
     let is_base64data = matches!(command, Command::EncryptBase64 | Command::DecryptBase64);
 
     match command {
+
         Command::Encrypt | Command::EncryptBase64 => {
             if !is_password_from_file {
                 *password = prompt_password(STD_OUT_ENTER_PASSWORD);
