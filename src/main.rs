@@ -156,15 +156,17 @@ fn run(
                 .filter(|&v| v == [VERSION_BYTE])
                 .ok_or(STD_ERR_INVALID_CIPHER)?;
 
-            let salt = cipher_data
+            let salt: &[u8; ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN] = cipher_data
                 .get(1..1 + ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN)
-                .ok_or(STD_ERR_INVALID_CIPHER)?;
+                .ok_or(STD_ERR_INVALID_CIPHER)?
+                .try_into()?;
+
             let ciphertext = cipher_data
                 .get(1 + ARGON2ID_SALT_AND_XCHACHAPOLY_NONCE_LEN..)
                 .filter(|slice| slice.len() >= XCHACHAPOLY_TAG_LEN)
                 .ok_or(STD_ERR_INVALID_CIPHER)?;
 
-            *cipher_data = decrypt_with_password(&password, salt.try_into().unwrap(), ciphertext)?;
+            *cipher_data = decrypt_with_password(&password, salt, ciphertext)?;
             let mut file = File::create(out_path)?;
             file.write(&cipher_data)?;
         }
