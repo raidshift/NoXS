@@ -8,8 +8,6 @@ use std::{
 };
 use zeroize::Zeroize;
 
-const COMMANDS: [&str; 4] = ["ea", "e", "da", "d"];
-
 const STD_ERR_INFO: &str = "
       od$$$$oo      NoXS V1.2.3 (https://github.com/raidshift/noxs)
      $$*°  °?$$
@@ -22,19 +20,39 @@ const STD_ERR_INFO: &str = "
   $$$$$$$$$$$$$$$$    e = encrypt  |  ea = encrypt & base64-encode
   ?$$$$$$$$$$$$$$$    d = decrypt  |  da = base64-decode & decrypt
 ";
-
 const STD_ERR_IN_FILE: &str = "Failed to read from <in_file>";
 const STD_ERR_PW_IN_FILE: &str = "Failed to read from <passwd_file>";
 const STD_ERR_OUT_FILE: &str = "Failed to write to <out_file>";
 const STD_ERR_PASSWORD_NO_MATCH: &str = "Passwords do not match";
 const STD_ERR_EQUAL_OUT_IN: &str = "<out_file> must not be <in_file>";
 const STD_ERR_EQUAL_PASSWD_IN_OUT: &str = "<passwd_file> must not be <in_file> or <out_file>";
-const STD_OUT_ENTER_PASSWORD: &str = "Enter password:";
-const STD_OUT_CONFIRM_PASSWORD: &str = "Confirm password:";
 const STD_ERR_NOT_BASE64: &str = "Input data is not base64 encoded";
 const STD_ERR_INVALID_CIPHER: &str = "Invalid cipher";
 
-fn query_password(prompt: &str) -> Vec<u8> {
+const STD_OUT_ENTER_PASSWORD: &str = "Enter password:";
+const STD_OUT_CONFIRM_PASSWORD: &str = "Confirm password:";
+
+// #[derive(Debug, PartialEq)]
+enum Command {
+    Encrypt,
+    EncryptBase64,
+    Decrypt,
+    DecryptBase64,
+}
+
+impl Command {
+    fn from_str(cmd: &str) -> Option<Self> {
+        match cmd {
+            "e" => Some(Command::Encrypt),
+            "d" => Some(Command::Decrypt),
+            "ea" => Some(Command::EncryptBase64),
+            "da" => Some(Command::DecryptBase64),
+            _ => None,
+        }
+    }
+}
+
+fn prompt_password(prompt: &str) -> Vec<u8> {
     print!("{}", prompt);
     io::stdout().flush().unwrap();
     rpassword::read_password().unwrap().into_bytes()
@@ -67,9 +85,11 @@ fn run(
 ) -> std::result::Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() < 4 || args.len() > 5 || !COMMANDS.contains(&args[1].as_str()) {
+    if args.len() < 4 || args.len() > 5 {
         return Err(STD_ERR_INFO.into());
     }
+
+    let command = Command::from_str(&args[1]).ok_or_else(|| STD_ERR_INFO)?;
 
     let in_path = &args[2];
     let out_path = &args[3];
@@ -85,28 +105,27 @@ fn run(
         if in_pw_path == in_path || in_pw_path == out_path {
             return Err(STD_ERR_EQUAL_PASSWD_IN_OUT.into());
         }
-        *password = fs::read(in_pw_path).map_err(|_| format!("{} '{}'", STD_ERR_PW_IN_FILE, in_pw_path))?;
+        *password =
+            fs::read(in_pw_path).map_err(|_| format!("{} '{}'", STD_ERR_PW_IN_FILE, in_pw_path))?;
         is_password_from_file = true;
     }
 
     *cipher_data = fs::read(in_path).map_err(|_| format!("{} '{}'", STD_ERR_IN_FILE, in_path))?;
-    let is_base64data;
+    let is_base64data = matches!(command, Command::EncryptBase64 | Command::DecryptBase64);
 
-    is_base64data = matches!(args[1].as_str(), "ea" | "da");
-
-    match args[1].as_str() {
-        "e" | "ea" => {
+    match command {
+        Command::Encrypt | Command::EncryptBase64 => {
             if !is_password_from_file {
-                *password = query_password(STD_OUT_ENTER_PASSWORD);
-                *passworm_confirm = query_password(STD_OUT_CONFIRM_PASSWORD);
+                *password = prompt_password(STD_OUT_ENTER_PASSWORD);
+                *passworm_confirm = prompt_password(STD_OUT_CONFIRM_PASSWORD);
                 if password != passworm_confirm {
                     return Err(STD_ERR_PASSWORD_NO_MATCH.into());
                 }
             }
 
             let (salt, ciphertext) = encrypt_with_password(&password, &cipher_data)?;
-            let mut file =
-                File::create(out_path).map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
+            let mut file = File::create(out_path)
+                .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
 
             match is_base64data {
                 true => {
@@ -114,21 +133,23 @@ fn run(
                     combined.extend_from_slice(&[VERSION_BYTE]);
                     combined.extend_from_slice(&salt);
                     combined.extend_from_slice(&ciphertext);
-                    file.write(BASE64_STANDARD.encode(combined).as_bytes()).map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
+                    file.write(BASE64_STANDARD.encode(combined).as_bytes())
+                        .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
                 }
                 false => {
                     file.write_vectored(&[
                         IoSlice::new(&[VERSION_BYTE]),
                         IoSlice::new(&salt),
                         IoSlice::new(&ciphertext),
-                    ]).map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
+                    ])
+                    .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
                 }
             }
         }
 
-        "d" | "da" => {
+        Command::Decrypt | Command::DecryptBase64 => {
             if !is_password_from_file {
-                *password = query_password(STD_OUT_ENTER_PASSWORD);
+                *password = prompt_password(STD_OUT_ENTER_PASSWORD);
             }
             if is_base64data {
                 *cipher_data = BASE64_STANDARD
@@ -152,10 +173,11 @@ fn run(
                 .ok_or(STD_ERR_INVALID_CIPHER)?;
 
             *cipher_data = decrypt_with_password(&password, salt, ciphertext)?;
-            let mut file = File::create(out_path).map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
-            file.write(&cipher_data).map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
+            let mut file = File::create(out_path)
+                .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
+            file.write(&cipher_data)
+                .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
         }
-        _ => {}
     }
 
     Ok(())
