@@ -23,8 +23,9 @@ const STD_ERR_INFO: &str = "
   ?$$$$$$$$$$$$$$$    d = decrypt  |  da = base64-decode & decrypt
 ";
 
-const STD_ERR_IN_FILE: &str = "Failed reading from";
-const STD_ERR_OUT_FILE: &str = "Failed writing to";
+const STD_ERR_IN_FILE: &str = "Failed to read from <in_file>";
+const STD_ERR_PW_IN_FILE: &str = "Failed to read from <passwd_file>";
+const STD_ERR_OUT_FILE: &str = "Failed to write to <out_file>";
 const STD_ERR_PASSWORD_NO_MATCH: &str = "Passwords do not match";
 const STD_ERR_EQUAL_OUT_IN: &str = "<out_file> must not be <in_file>";
 const STD_ERR_EQUAL_PASSWD_IN_OUT: &str = "<passwd_file> must not be <in_file> or <out_file>";
@@ -84,7 +85,7 @@ fn run(
         if in_pw_path == in_path || in_pw_path == out_path {
             return Err(STD_ERR_EQUAL_PASSWD_IN_OUT.into());
         }
-        *password = fs::read(in_pw_path).map_err(|_| format!("{} '{}'", STD_ERR_IN_FILE, in_pw_path))?;
+        *password = fs::read(in_pw_path).map_err(|_| format!("{} '{}'", STD_ERR_PW_IN_FILE, in_pw_path))?;
         is_password_from_file = true;
     }
 
