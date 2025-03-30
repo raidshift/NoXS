@@ -23,7 +23,8 @@ const STD_ERR_INFO: &str = "
   ?$$$$$$$$$$$$$$$    d = decrypt  |  da = base64-decode & decrypt
 ";
 
-// const STD_ERR_FILE_NOT_FOUND: &str = "File not found";
+const STD_ERR_IN_FILE: &str = "Failed reading from";
+const STD_ERR_OUT_FILE: &str = "Failed writing to";
 const STD_ERR_PASSWORD_NO_MATCH: &str = "Passwords do not match";
 const STD_ERR_EQUAL_OUT_IN: &str = "<out_file> must not be <in_file>";
 const STD_ERR_EQUAL_PASSWD_IN_OUT: &str = "<passwd_file> must not be <in_file> or <out_file>";
@@ -31,24 +32,6 @@ const STD_OUT_ENTER_PASSWORD: &str = "Enter password:";
 const STD_OUT_CONFIRM_PASSWORD: &str = "Confirm password:";
 const STD_ERR_NOT_BASE64: &str = "Input data is not base64 encoded";
 const STD_ERR_INVALID_CIPHER: &str = "Invalid cipher";
-
-// fn exit_with_error(out: &str) -> ! {
-//     eprintln!("{}", out);
-//     std::process::exit(1);
-// }
-
-// fn read_data_from_file(path: &str) -> io::Result<Vec<u8>> {
-//     fs::read(path)
-// }
-
-// fn write_io_slices_to_file(path: &str, io_slices: &[IoSlice]) -> io::Result<()> {
-//     File::create(path)?.write_vectored(io_slices);
-//     Ok(())
-// }
-
-// fn write_data_to_file(path: &str, data: &[u8]) -> io::Result<()> {
-//     fs::write(path, data)
-// }
 
 fn query_password(prompt: &str) -> Vec<u8> {
     print!("{}", prompt);
@@ -97,15 +80,15 @@ fn run(
     let mut is_password_from_file = false;
 
     if args.len() == 5 {
-        let passwd_path = &args[4];
-        if passwd_path == in_path || passwd_path == out_path {
+        let in_pw_path = &args[4];
+        if in_pw_path == in_path || in_pw_path == out_path {
             return Err(STD_ERR_EQUAL_PASSWD_IN_OUT.into());
         }
-        *password = fs::read(passwd_path)?;
+        *password = fs::read(in_pw_path).map_err(|_| format!("{} '{}'", STD_ERR_IN_FILE, in_pw_path))?;
         is_password_from_file = true;
     }
 
-    *cipher_data = fs::read(in_path)?;
+    *cipher_data = fs::read(in_path).map_err(|_| format!("{} '{}'", STD_ERR_IN_FILE, in_path))?;
     let is_base64data;
 
     is_base64data = matches!(args[1].as_str(), "ea" | "da");
@@ -121,7 +104,8 @@ fn run(
             }
 
             let (salt, ciphertext) = encrypt_with_password(&password, &cipher_data)?;
-            let mut file = File::create(out_path)?;
+            let mut file =
+                File::create(out_path).map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
 
             match is_base64data {
                 true => {
@@ -129,14 +113,14 @@ fn run(
                     combined.extend_from_slice(&[VERSION_BYTE]);
                     combined.extend_from_slice(&salt);
                     combined.extend_from_slice(&ciphertext);
-                    file.write(BASE64_STANDARD.encode(combined).as_bytes())?;
+                    file.write(BASE64_STANDARD.encode(combined).as_bytes()).map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
                 }
                 false => {
                     file.write_vectored(&[
                         IoSlice::new(&[VERSION_BYTE]),
                         IoSlice::new(&salt),
                         IoSlice::new(&ciphertext),
-                    ])?;
+                    ]).map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
                 }
             }
         }
@@ -167,8 +151,8 @@ fn run(
                 .ok_or(STD_ERR_INVALID_CIPHER)?;
 
             *cipher_data = decrypt_with_password(&password, salt, ciphertext)?;
-            let mut file = File::create(out_path)?;
-            file.write(&cipher_data)?;
+            let mut file = File::create(out_path).map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
+            file.write(&cipher_data).map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
         }
         _ => {}
     }
