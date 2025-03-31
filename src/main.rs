@@ -88,7 +88,7 @@ fn main() {
     cipher_data.zeroize();
 
     let _ = result.map_err(|e| {
-        eprintln!("{:?}", e);
+        eprintln!("{e}");
         std::process::exit(1);
     });
 }
