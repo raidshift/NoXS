@@ -1,6 +1,6 @@
 [package]
 name = "noxs"
-version = "1.2.3"
+version = "1.2.4"
 edition = "2021"
 description = "A library for authenticated encryption (ChaCha20-Poly1305) with password-based key derivation (Argon2id)"
 readme = "README.md"
