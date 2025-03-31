@@ -5,7 +5,7 @@ use chacha20poly1305::{
 };
 use rand_chacha::ChaCha20Rng;
 use rand_core::{RngCore, SeedableRng};
-use std::{error::Error, fmt, ptr};
+use std::{error::Error, fmt, ptr, sync::atomic};
 use zeroize::Zeroize;
 
 pub const VERSION_BYTE: u8 = 0x78;
@@ -55,12 +55,12 @@ fn derive_key(password: &[u8], salt: &[u8]) -> Result<[u8; ARGON2ID_KEY_LEN], Ci
 
     let ptr = hash.as_bytes().as_ptr() as *mut u8;
     let len = hash.as_bytes().len();
-
     unsafe {
         for i in 0..len {
             ptr::write_volatile(ptr.add(i), 0);
         }
     }
+    atomic::compiler_fence(atomic::Ordering::SeqCst);
 
     key
 }
