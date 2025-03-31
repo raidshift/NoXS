@@ -101,20 +101,20 @@ fn run(
     passworm_confirm: &mut Vec<u8>,
     cipher_data: &mut Vec<u8>,
     command: Command,
-    in_path: &String,
-    out_path: &String,
-    in_pw_path: Option<&String>,
+    in_file: &String,
+    out_file: &String,
+    pw_file: Option<&String>,
 ) -> std::result::Result<(), Box<dyn Error>> {
-    if in_path == out_path {
+    if in_file == out_file {
         return Err(STD_ERR_EQUAL_OUT_IN.into());
     }
 
-    if let Some(in_pw_path) = in_pw_path {
-        if in_pw_path == in_path || in_pw_path == out_path {
+    if let Some(pw_file) = pw_file {
+        if pw_file == in_file || pw_file == out_file {
             return Err(STD_ERR_EQUAL_PASSWD_IN_OUT.into());
         }
         *password =
-            fs::read(in_pw_path).map_err(|_| format!("{} '{}'", STD_ERR_PW_IN_FILE, in_pw_path))?;
+            fs::read(pw_file).map_err(|_| format!("{} '{}'", STD_ERR_PW_IN_FILE, pw_file))?;
     } else {
         *password = prompt_password(STD_OUT_ENTER_PASSWORD);
         if matches!(command, Command::Encrypt | Command::EncryptBase64) {
@@ -125,13 +125,13 @@ fn run(
         }
     };
 
-    *cipher_data = fs::read(in_path).map_err(|_| format!("{} '{}'", STD_ERR_IN_FILE, in_path))?;
+    *cipher_data = fs::read(in_file).map_err(|_| format!("{} '{}'", STD_ERR_IN_FILE, in_file))?;
 
     match command {
         Command::Encrypt | Command::EncryptBase64 => {
             let (salt, ciphertext) = encrypt_with_password(&password, &cipher_data)?;
-            let mut file = File::create(out_path)
-                .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
+            let mut file = File::create(out_file)
+                .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_file))?;
 
             match command {
                 Command::EncryptBase64 => {
@@ -140,7 +140,7 @@ fn run(
                     combined.extend_from_slice(&salt);
                     combined.extend_from_slice(&ciphertext);
                     file.write(BASE64_STANDARD.encode(combined).as_bytes())
-                        .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
+                        .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_file))?;
                 }
                 _ => {
                     file.write_vectored(&[
@@ -148,7 +148,7 @@ fn run(
                         IoSlice::new(&salt),
                         IoSlice::new(&ciphertext),
                     ])
-                    .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
+                    .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_file))?;
                 }
             }
         }
@@ -176,10 +176,10 @@ fn run(
                 .ok_or(STD_ERR_INVALID_CIPHER)?;
 
             *cipher_data = decrypt_with_password(&password, salt, ciphertext)?;
-            let mut file = File::create(out_path)
-                .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
+            let mut file = File::create(out_file)
+                .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_file))?;
             file.write(&cipher_data)
-                .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_path))?;
+                .map_err(|_| format!("{} '{}'", STD_ERR_OUT_FILE, out_file))?;
         }
     }
 
