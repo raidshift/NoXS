@@ -92,7 +92,7 @@ fn main() {
             eprintln!("{e}");
             std::process::exit(1);
         }
-        _ => {}
+        _ => ()
     }
 }
 
@@ -109,18 +109,21 @@ fn run(
         return Err(STD_ERR_EQUAL_OUT_IN.into());
     }
 
-    if let Some(pw_file) = pw_file {
-        if pw_file == in_file || pw_file == out_file {
-            return Err(STD_ERR_EQUAL_PASSWD_IN_OUT.into());
+    match pw_file {
+        Some(pw_file) => {
+            if pw_file == in_file || pw_file == out_file {
+                return Err(STD_ERR_EQUAL_PASSWD_IN_OUT.into());
+            }
+            *password =
+                fs::read(pw_file).map_err(|_| format!("{} '{}'", STD_ERR_PW_IN_FILE, pw_file))?;
         }
-        *password =
-            fs::read(pw_file).map_err(|_| format!("{} '{}'", STD_ERR_PW_IN_FILE, pw_file))?;
-    } else {
-        *password = prompt_password(STD_OUT_ENTER_PASSWORD);
-        if matches!(command, Command::Encrypt | Command::EncryptBase64) {
-            *passworm_confirm = prompt_password(STD_OUT_CONFIRM_PASSWORD);
-            if password != passworm_confirm {
-                return Err(STD_ERR_PASSWORD_NO_MATCH.into());
+        None => {
+            *password = prompt_password(STD_OUT_ENTER_PASSWORD);
+            if matches!(command, Command::Encrypt | Command::EncryptBase64) {
+                *passworm_confirm = prompt_password(STD_OUT_CONFIRM_PASSWORD);
+                if password != passworm_confirm {
+                    return Err(STD_ERR_PASSWORD_NO_MATCH.into());
+                }
             }
         }
     };
