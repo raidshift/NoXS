@@ -87,13 +87,10 @@ fn main() {
     password_confirmed.zeroize();
     cipher_data.zeroize();
 
-    match result {
-        Err(e) => {
-            eprintln!("{e}");
-            std::process::exit(1);
-        }
-        _ => (),
-    }
+    let _ = result.map_err(|e| {
+        eprintln!("{:?}", e);
+        std::process::exit(1);
+    });
 }
 
 fn run(
