@@ -59,7 +59,7 @@ fn prompt_password(prompt: &str) -> Vec<u8> {
 
 fn main() {
     let mut password: Vec<u8> = Vec::new();
-    let mut password_confirm: Vec<u8> = Vec::new();
+    let mut password_confirmed: Vec<u8> = Vec::new();
     let mut cipher_data: Vec<u8> = Vec::new();
 
     let args: Vec<String> = env::args().collect();
@@ -75,7 +75,7 @@ fn main() {
 
     let result = run(
         &mut password,
-        &mut password_confirm,
+        &mut password_confirmed,
         &mut cipher_data,
         command,
         &args[2],
@@ -84,7 +84,7 @@ fn main() {
     );
 
     password.zeroize();
-    password_confirm.zeroize();
+    password_confirmed.zeroize();
     cipher_data.zeroize();
 
     match result {
@@ -92,13 +92,13 @@ fn main() {
             eprintln!("{e}");
             std::process::exit(1);
         }
-        _ => ()
+        _ => (),
     }
 }
 
 fn run(
     password: &mut Vec<u8>,
-    passworm_confirm: &mut Vec<u8>,
+    password_confirmed: &mut Vec<u8>,
     cipher_data: &mut Vec<u8>,
     command: Command,
     in_file: &String,
@@ -120,8 +120,8 @@ fn run(
         None => {
             *password = prompt_password(STD_OUT_ENTER_PASSWORD);
             if matches!(command, Command::Encrypt | Command::EncryptBase64) {
-                *passworm_confirm = prompt_password(STD_OUT_CONFIRM_PASSWORD);
-                if password != passworm_confirm {
+                *password_confirmed = prompt_password(STD_OUT_CONFIRM_PASSWORD);
+                if password != password_confirmed {
                     return Err(STD_ERR_PASSWORD_NO_MATCH.into());
                 }
             }
