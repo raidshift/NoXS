@@ -53,6 +53,8 @@ fn derive_key(password: &[u8], salt: &[u8]) -> Result<[u8; ARGON2ID_KEY_LEN], Ci
         .try_into()
         .map_err(|_| CipherError::DeriveKey);
 
+    atomic::compiler_fence(atomic::Ordering::SeqCst);
+
     let ptr = hash.as_bytes().as_ptr() as *mut u8;
     let len = hash.as_bytes().len();
     unsafe {
